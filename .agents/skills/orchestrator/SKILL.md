@@ -95,34 +95,73 @@ ls pyproject.toml package.json 2>/dev/null
 
 ```
 1. Spawn BA with existing context (vault notes, codebase)
-2. Check output for QUESTIONS_FOR_USER block
-   - If present: relay to user, resume agent with answers, repeat
-   - If absent: BUSINESS.md is done
+2. FIRST-TURN GATE: Check FIRST output for QUESTIONS_FOR_USER block
+   - If present: relay to user, resume agent with answers
+     - Check subsequent outputs:
+       - If QUESTIONS_FOR_USER again: relay and resume (repeat)
+       - If document produced: done, move to next agent
+   - If ABSENT on first turn: PROTOCOL VIOLATION (agent skipped mandatory questioning)
+     Re-spawn with correction prompt (max 2 retries):
+       "You produced <DOCUMENT>.md without asking questions first. This violates
+       your mandatory execution sequence. Your FIRST output MUST be a
+       QUESTIONS_FOR_USER block. Re-read your instructions and start with
+       questions. Do not produce the document until you have received answers."
+     If agent still skips after 2 retries: escalate to user
 3. Spawn Designer with BUSINESS.md content
-4. Same relay loop until DESIGN.md is produced
+4. Same first-turn gate + relay loop until DESIGN.md is produced
 5. Spawn Architect with BUSINESS.md + DESIGN.md
-6. Same relay loop until ARCHITECTURE.md is produced
+6. Same first-turn gate + relay loop until ARCHITECTURE.md is produced
 ```
+
+**Light D&F note:** The first-turn gate applies equally to light D&F. "Light" means
+fewer questioning rounds (1-2 instead of 3-5), NOT "bypass questions". Every BLT agent
+must ask at least one round of questions before producing a document.
 
 #### Implementation
 
 ```python
+def first_turn_gate(agent_id, role_name, doc_name, max_retries=2):
+    """Structural enforcement: BLT agents MUST ask questions before producing documents."""
+    result = wait(agent_id)
+
+    # First-turn gate: first output MUST contain questions
+    if "QUESTIONS_FOR_USER:" not in result:
+        # Protocol violation -- agent skipped mandatory questioning
+        for retry in range(max_retries):
+            close_agent(agent_id)
+            agent_id = spawn_agent(prompt=f"""Use skill {role_name}.
+You produced {doc_name} without asking questions first. This violates
+your mandatory execution sequence. Your FIRST output MUST be a
+QUESTIONS_FOR_USER block. Re-read your instructions and start with
+questions. Do not produce the document until you have received answers.""")
+            result = wait(agent_id)
+            if "QUESTIONS_FOR_USER:" in result:
+                break
+        else:
+            # Max retries exhausted -- escalate to user
+            user_choice = ask_user(
+                f"The {role_name} agent is not asking questions despite being "
+                f"instructed to. Answer questions manually or accept as-is?")
+            if user_choice == "accept":
+                return agent_id, result
+            # else: user provides manual answers, resume below
+
+    # Normal relay loop: relay questions until document is produced
+    while "QUESTIONS_FOR_USER:" in result:
+        user_answers = ask_user(extract_questions(result))
+        resume_agent(agent_id, prompt=f"User answers: {user_answers}")
+        result = wait(agent_id)
+
+    close_agent(agent_id)
+    return agent_id, result
+
 # Phase 1: Business Analyst
 ba_id = spawn_agent(prompt="""Use skill business_analyst.
 problem_statement='<user's problem>'
 Existing vault context: <vault search results>
 Ask clarifying questions if needed.""")
 
-ba_result = wait(ba_id)
-
-# Check for questions
-while "QUESTIONS_FOR_USER:" in ba_result:
-    # Present questions to user, get answers
-    user_answers = ask_user(extract_questions(ba_result))
-    resume_agent(ba_id, prompt=f"User answers: {user_answers}")
-    ba_result = wait(ba_id)
-
-close_agent(ba_id)
+first_turn_gate(ba_id, "business_analyst", "BUSINESS.md")
 
 # Phase 2: Designer (sequential, needs BUSINESS.md)
 business_md = read_file("docs/BUSINESS.md")
@@ -130,7 +169,7 @@ designer_id = spawn_agent(prompt=f"""Use skill designer.
 product_context from BUSINESS.md:
 {business_md}""")
 
-# Same question relay loop...
+first_turn_gate(designer_id, "designer", "DESIGN.md")
 
 # Phase 3: Architect (sequential, needs BUSINESS.md + DESIGN.md)
 design_md = read_file("docs/DESIGN.md")
@@ -139,7 +178,7 @@ proposal from BUSINESS.md + DESIGN.md:
 {business_md}
 {design_md}""")
 
-# Same question relay loop...
+first_turn_gate(arch_id, "architect", "ARCHITECTURE.md")
 ```
 
 ### BLT Convergence (MANDATORY after all three documents exist)
