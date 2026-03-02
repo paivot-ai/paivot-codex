@@ -308,10 +308,11 @@ Create properly structured bugs for these discovered issues:
             pending_bug_reports = extract_bug_reports(dev_result)
         continue
 
-    # 3. Pick ready work from entire backlog (P0 bugs first)
-    ready = shell("nd ready --priority 0 --json") or shell("nd ready --json")
+    # 3. Pick ready work from entire backlog (highest priority first)
+    ready = shell("nd ready --sort priority --json")
     if not ready:
         break  # Entire backlog complete or all remaining work blocked
+    # Pick highest-priority item. Empty result is the ONLY signal that work is done.
 
     # Spawn developers (respect concurrency limits)
     dev_id = spawn_agent(prompt=f"Use skill developer. story_id={story_id}.")
