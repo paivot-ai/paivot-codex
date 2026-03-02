@@ -155,6 +155,12 @@ nd update <story-id> --append-notes "## Implementation Evidence (DELIVERED)
 - [ISSUE] <path:line>: <description>
 - [CONCERN] <area>: <description>
 
+### DISCOVERED_BUG (if bugs found -- one block per bug)
+  title: <concise bug title>
+  context: <full context -- what you found, what component, how it manifests>
+  affected_files: <files involved>
+  discovered_during: <story-id>
+
 ## nd_contract
 status: delivered
 
@@ -182,6 +188,7 @@ Hard rule: **incomplete proof is an automatic rejection** by `pm_acceptor`.
 - One story only. No working on other stories.
 - No backlog edits (creating or rewriting stories is `sr_pm` work).
 - Do not close stories (closing is `pm_acceptor`).
+- Do not create bugs (bug creation is `sr_pm` work via Bug Triage Mode). Report bugs using `DISCOVERED_BUG:` blocks in your delivery notes.
 - Do not rely on external context not present in the story.
 
 ## Invocation

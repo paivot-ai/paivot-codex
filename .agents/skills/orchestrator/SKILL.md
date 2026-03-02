@@ -41,9 +41,24 @@ In dispatcher mode you are a coordinator, NOT a producer. You:
 You NEVER:
 - Write BUSINESS.md, DESIGN.md, or ARCHITECTURE.md yourself
 - Write source code or tests yourself
-- Create story files yourself
+- Create story files or bugs yourself
 - Make architectural or design decisions yourself
 - Skip agents to "save time"
+
+### Bug Triage Protocol
+
+When a Developer or PM-Acceptor agent outputs `DISCOVERED_BUG:` blocks:
+1. Collect all DISCOVERED_BUG blocks from the agent output
+2. Spawn `sr_pm` in `mode=bug_triage` with all collected reports
+3. Sr PM creates fully structured bugs with AC, epic placement, and chain
+4. Wait for Sr PM to finish before continuing (bugs may affect priorities)
+5. All bugs are P0. No exceptions.
+
+### Epic Auto-Close
+
+After `pm_acceptor` accepts a story, it checks if all siblings in the parent epic are
+closed. If so, it closes the epic. Epic completion is NOT a loop termination event --
+the loop moves to the next ready work in the backlog.
 
 ## spawn_agent Usage
 
@@ -254,35 +269,60 @@ Review the backlog for gaps. Return APPROVED or REJECTED.""")
 
 ## Execution Loop (Post-Backlog Approval)
 
+**The loop is permanent.** It runs across the ENTIRE backlog, not a single epic.
+When an epic completes (auto-closed by pm_acceptor), the loop moves to the next
+epic with ready work. The loop only stops when the backlog is empty or fully blocked.
+
 ```python
 while True:
+    # 0. Bug triage: check if any prior agent output had DISCOVERED_BUG blocks
+    if pending_bug_reports:
+        srpm_id = spawn_agent(prompt=f"""Use skill sr_pm. mode=bug_triage.
+Create properly structured bugs for these discovered issues:
+{pending_bug_reports}""")
+        wait(srpm_id)
+        close_agent(srpm_id)
+        pending_bug_reports = None
+        continue  # Re-evaluate priorities after new bugs created
+
     # 1. Check for delivered stories awaiting review
-    delivered = shell("nd search 'delivered' | head -10")
+    delivered = shell("nd list --status in_progress --label delivered --json")
     if delivered:
         # Spawn PM-Acceptor (respect concurrency limits)
         pm_id = spawn_agent(prompt=f"Use skill pm_acceptor. story_id={story_id}.")
         pm_result = wait(pm_id)
         close_agent(pm_id)
+        # Scan pm_result for DISCOVERED_BUG blocks
+        if "DISCOVERED_BUG:" in pm_result:
+            pending_bug_reports = extract_bug_reports(pm_result)
         continue
 
     # 2. Check for rejected stories
-    rejected = shell("nd search 'rejected' | head -10")
+    rejected = shell("nd list --status in_progress --label rejected --json")
     if rejected:
         dev_id = spawn_agent(prompt=f"Use skill developer. story_id={story_id}. Rework.")
         dev_result = wait(dev_id)
         close_agent(dev_id)
+        # Scan dev_result for DISCOVERED_BUG blocks
+        if "DISCOVERED_BUG:" in dev_result:
+            pending_bug_reports = extract_bug_reports(dev_result)
         continue
 
-    # 3. Pick ready work
-    ready = shell("nd ready")
+    # 3. Pick ready work from entire backlog
+    ready = shell("nd ready --json")
     if not ready:
-        break  # All work complete
+        break  # Entire backlog complete or all remaining work blocked
 
     # Spawn developers (respect concurrency limits)
     dev_id = spawn_agent(prompt=f"Use skill developer. story_id={story_id}.")
     dev_result = wait(dev_id)
     close_agent(dev_id)
+    # Scan dev_result for DISCOVERED_BUG blocks
+    if "DISCOVERED_BUG:" in dev_result:
+        pending_bug_reports = extract_bug_reports(dev_result)
 ```
+
+**Epic completion is NOT a termination event.** The loop keeps running.
 
 ## QUESTIONS_FOR_USER Relay
 
@@ -347,9 +387,10 @@ if tampered:
 
 | Priority | Condition | Next Skill |
 |----------|-----------|------------|
+| 0 | DISCOVERED_BUG blocks pending | `sr_pm` (bug_triage) |
 | 1 | Delivered stories awaiting review | `pm_acceptor` |
 | 2 | Rejected stories need rework | `developer` (rework) |
-| 3 | Ready work exists | `developer` (new) |
+| 3 | Ready work exists anywhere in backlog | `developer` (new) |
 | 4 | Backlog quality issues (post-D&F) | `sr_pm` (repair) |
 | 5 | D&F incomplete (greenfield) | `business_analyst` -> `designer` -> `architect` |
 | 6 | D&F complete, no backlog | `sr_pm` -> `anchor` loop |

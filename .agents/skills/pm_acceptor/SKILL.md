@@ -71,13 +71,20 @@ Look for obvious blockers:
 
 ### Phase 4.5: Discovered Issues Extraction (Mandatory)
 
-If delivery notes contain "OBSERVATIONS" or you notice unrelated issues, file them:
+If delivery notes contain "OBSERVATIONS" or "DISCOVERED_BUG" blocks, or you notice
+unrelated issues, do NOT create bugs yourself. Output structured `DISCOVERED_BUG:` blocks
+for the orchestrator to route to `sr_pm` for proper triage:
 
-```bash
-nd create "Bug: <clear title>" -t bug -p 2 \
-  -d "Discovered during PM review of <story-id>: <details>"
-nd dep add <new-id> <story-id> --type relates
 ```
+DISCOVERED_BUG:
+  title: <concise bug title>
+  context: <full context -- what was found, what component, how it manifests>
+  affected_files: <files involved>
+  discovered_during: <story-id being reviewed>
+```
+
+The `sr_pm` creates fully structured bugs with acceptance criteria, proper epic
+placement, and dependency chain. All bugs are P0.
 
 ### Phase 5: Decision (Accept Or Reject)
 
@@ -102,7 +109,18 @@ status: accepted
 - [x] AC-by-AC verified from evidence"
 
 nd close <story-id> --reason="Accepted: <brief summary>"
+
+# Epic auto-close: check if all siblings in parent epic are now closed
+PARENT=$(nd show <story-id> --json | jq -r '.parent')
+if [ -n "$PARENT" ] && [ "$PARENT" != "null" ]; then
+  OPEN=$(nd children $PARENT --json | jq '[.[] | select(.status != "closed")] | length')
+  if [ "$OPEN" -eq 0 ]; then
+    nd close $PARENT --reason="All stories accepted"
+  fi
+fi
 ```
+
+Epic auto-close is mandatory. An epic with all children accepted must be closed immediately.
 
 #### REJECT
 
@@ -142,7 +160,9 @@ Chronic rejection policy:
 
 - Review only. Do not implement code.
 - Do not manage the backlog (that is `sr_pm`).
+- Do not create bugs (bug creation is `sr_pm` work via Bug Triage Mode). Report bugs using `DISCOVERED_BUG:` blocks.
 - Trust evidence when it is complete; do not re-run tests by default.
+- After accepting, always run epic auto-close check.
 
 ## Invocation
 
