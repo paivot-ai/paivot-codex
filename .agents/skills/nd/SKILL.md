@@ -47,9 +47,10 @@ Issues are markdown files in `.vault/issues/`. Each file has YAML frontmatter (i
 |-----------|---------|
 | Find work | `nd ready`, `nd blocked`, `nd stale` |
 | Create issues | `nd create`, `nd q` (quick capture) |
+| List/filter | `nd list` (supports `--parent`, `--status`, `--label`, `--type`, `--assignee`, `--priority`) |
 | Dependencies | `nd dep add/rm/relate/cycles/tree` |
 | Execution paths | `nd path`, `--follows`, `--start` |
-| Epics | `nd epic tree/status/close-eligible` |
+| Epics | `nd epic tree/status/close-eligible`, `nd children <id>` |
 | Visualization | `nd graph` (dep DAG), `nd path` (exec chains) |
 | Labels | `nd labels add/rm <id> <label>` |
 | Defer work | `nd defer/undefer` |
@@ -57,6 +58,13 @@ Issues are markdown files in `.vault/issues/`. Each file has YAML frontmatter (i
 | Search | `nd search "query"` |
 | Health | `nd doctor [--fix]` |
 | AI context | `nd prime [--json]` |
+
+### Flag gotcha: `nd ready` vs `nd list`
+
+`nd ready` only supports `--assignee`, `--sort`, `--limit`, `--json`.
+It does NOT support `--parent`, `--status`, or `--label`.
+To scope ready work to an epic: `nd list --parent <epic-id> --status open --json`.
+Do NOT invent flags by analogy -- run `nd <command> --help` if unsure.
 
 ## nd Contract (Status + Evidence + Proof)
 

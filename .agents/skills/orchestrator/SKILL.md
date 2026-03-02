@@ -359,12 +359,22 @@ if tampered:
 
 ```bash
 nd prime           # Full project context
-nd ready           # Unblocked work
+nd ready           # Unblocked work (no --parent flag; see below)
 nd search "delivered"  # Delivered stories
 nd search "rejected"   # Rejected stories
 nd show <id>       # Full story context
 nd stats           # Backlog statistics
 ```
+
+### nd flag reference (avoid hallucinating flags)
+
+`nd list` supports: `--parent`, `--status`, `--label`, `--type`, `--assignee`, `--priority`, `--sort`, `--limit`, `--all`, `--json`
+`nd ready` supports: `--assignee`, `--sort`, `--limit`, `--json`
+`nd children` supports: `--json`
+
+**`nd ready` does NOT support `--parent`, `--status`, or `--label`.**
+To get ready work scoped to an epic, use `nd list --parent <epic-id> --status open --json` instead.
+Do NOT invent flags by analogy -- run `nd <command> --help` if unsure.
 
 ## Invocation
 
