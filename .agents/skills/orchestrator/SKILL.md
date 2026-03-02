@@ -396,6 +396,21 @@ if tampered:
 | 6 | D&F complete, no backlog | `sr_pm` -> `anchor` loop |
 | 7 | Milestone complete | `retro` |
 
+## Story Branch Cleanup (after merge)
+
+After merging a developer's story branch, clean up in one step:
+
+```bash
+git branch -D story/<story-id>
+```
+
+**Always use `-D` (not `-d`):** the branch is merged to the local epic branch or main
+but not to `origin/main`, so `-d` will always fail with "not fully merged".
+
+**nd labels are idempotent-ish:** `nd labels add` fails if the label already exists.
+If the developer already set `delivered`, don't set it again. Check first or ignore
+the error.
+
 ## Required nd Operations
 
 ```bash
