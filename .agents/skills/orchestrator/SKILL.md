@@ -308,8 +308,8 @@ Create properly structured bugs for these discovered issues:
             pending_bug_reports = extract_bug_reports(dev_result)
         continue
 
-    # 3. Pick ready work from entire backlog
-    ready = shell("nd ready --json")
+    # 3. Pick ready work from entire backlog (P0 bugs first)
+    ready = shell("nd ready --priority 0 --json") or shell("nd ready --json")
     if not ready:
         break  # Entire backlog complete or all remaining work blocked
 
@@ -401,12 +401,19 @@ if tampered:
 ```bash
 nd prime           # Full project context
 nd ready           # Unblocked work (supports same filters as nd list)
-nd ready --parent <epic-id> --json  # Ready work scoped to an epic
-nd search "delivered"  # Delivered stories
-nd search "rejected"   # Rejected stories
+nd ready --priority 0 --json       # P0 bugs first
+nd ready --parent <epic-id> --json # Ready work scoped to an epic
+nd list --status in_progress --label delivered --json  # Delivered stories
+nd list --status in_progress --label rejected --json   # Rejected stories
 nd show <id>       # Full story context
 nd stats           # Backlog statistics
 ```
+
+**nd filter cheat sheet** (prevents wasted queries with wrong flags):
+- Priority: `--priority 0` (not `--label P0` -- priority is not a label)
+- Labels: `--label delivered`, `--label rejected`, `--label hard-tdd`
+- Type: `--type bug`, `--type task`, `--type epic`
+- Parent: `--parent <epic-id>`
 
 As of nd v0.7.0, `nd ready` supports the same filter flags as `nd list`:
 `--parent`, `--status`, `--label`, `--type`, `--assignee`, `--priority`,
