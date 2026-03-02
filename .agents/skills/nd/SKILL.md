@@ -59,12 +59,10 @@ Issues are markdown files in `.vault/issues/`. Each file has YAML frontmatter (i
 | Health | `nd doctor [--fix]` |
 | AI context | `nd prime [--json]` |
 
-### Flag gotcha: `nd ready` vs `nd list`
-
-`nd ready` only supports `--assignee`, `--sort`, `--limit`, `--json`.
-It does NOT support `--parent`, `--status`, or `--label`.
-To scope ready work to an epic: `nd list --parent <epic-id> --status open --json`.
-Do NOT invent flags by analogy -- run `nd <command> --help` if unsure.
+As of nd v0.7.0, `nd ready` supports the same filter flags as `nd list`:
+`--parent`, `--status`, `--label`, `--type`, `--assignee`, `--priority`,
+`--no-parent`, `--sort`, `--reverse`, `--limit`, date range filters, `--json`.
+Example: `nd ready --parent <epic-id> --json` for epic-scoped ready work.
 
 ## nd Contract (Status + Evidence + Proof)
 
