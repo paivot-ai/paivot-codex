@@ -1,116 +1,336 @@
 ---
 name: orchestrator
-description: Manual dispatcher for Paivot personas in Codex. Uses bd stories as the single source of truth, enforces the status/evidence/proof contract, and tells you exactly which skill to run next.
+description: >
+  Automated dispatcher for Paivot personas in Codex. Uses spawn_agent for multi-agent
+  orchestration, nd stories as the single source of truth, and vault knowledge for
+  context. Enforces D&F gates, status/evidence/proof contracts, concurrency limits,
+  and the Sr PM / Anchor iterative loop.
 ---
 
-# Orchestrator (Manual)
+# Orchestrator (Automated via spawn_agent)
 
 ## Purpose
 
-The original Paivot workflow spawned personas automatically and used an external FSM to enforce correct sequencing. In this Codex Skills migration, that enforcement is not present. This skill preserves intent by manually orchestrating personas via `bd` story state.
+The orchestrator coordinates Paivot personas using Codex's `spawn_agent` for automated
+multi-agent orchestration. It decides what to run next based on nd story state, spawns
+the appropriate agent, waits for completion, and advances the workflow.
 
-**Hard rule:** the orchestrator does not implement code. It only decides what persona to run next and what updates must be written back into `bd`.
-
-Notes:
-- Codex skills are **not** independent subagents. If you want parallel execution, run multiple Codex sessions in parallel and coordinate solely via `bd`.
-- `bd` evolves quickly. Treat `bd --help` as authoritative for the exact command/flag syntax.
+**Hard rule:** the orchestrator does not implement code. It only dispatches agents
+and manages workflow state.
 
 ## Inputs
 
 Provide one of:
-- `epic_id` (optional): `bd-...` epic you want to drive to completion
-- `story_id` (optional): `bd-...` story you want to advance
-- If neither is provided: orchestrate by selecting the next ready story from `bd`
+- `epic_id` (optional): nd epic to drive to completion
+- `story_id` (optional): nd story to advance
+- `mode` (optional): `dispatcher` to enter full dispatcher mode for a project
+- If none provided: orchestrate by selecting the next ready story from nd
 
-Environment:
-- Preferred: a repo with `.beads/` so `bd` commands work
-- Fallback: paste story/epic text if `bd` is not available
+## Dispatcher Mode
 
-## Contract: Status + Evidence + Proof (Required)
+When the user invokes Paivot (phrases like "use Paivot", "Paivot this", "run Paivot"),
+you MUST operate as dispatcher-only for the remainder of the session.
 
-All personas coordinate through the `bd` story notes:
+In dispatcher mode you are a coordinator, NOT a producer. You:
+- Spawn agents via `spawn_agent` and manage their lifecycle
+- Relay QUESTIONS_FOR_USER blocks from agents to the user
+- Summarize agent outputs
+- Manage the nd backlog (status transitions, priority)
+- Capture knowledge to the vault
 
-```markdown
-## bd_contract
-status: <new|in_progress|delivered|accepted|rejected>
+You NEVER:
+- Write BUSINESS.md, DESIGN.md, or ARCHITECTURE.md yourself
+- Write source code or tests yourself
+- Create story files yourself
+- Make architectural or design decisions yourself
+- Skip agents to "save time"
 
-### evidence
-- ...
+## spawn_agent Usage
 
-### proof
-- [ ] AC #1: ...
+Codex provides these primitives for multi-agent orchestration:
+
+```python
+# Spawn an agent with a specific skill
+agent_id = spawn_agent(prompt="Use skill developer. story_id=PROJ-a1b2. ...")
+
+# Wait for agent to complete
+result = wait(agent_id)
+
+# Resume an agent with additional context (e.g., user answers)
+resume_agent(agent_id, prompt="User answers to your questions: ...")
+
+# Close an agent when done
+close_agent(agent_id)
 ```
 
-## D&F Gate (Mandatory In Greenfield)
+## Concurrency Limits
 
-For greenfield work, Discovery & Framing is a hard gate. Do not move into implementation backlog authoring until D&F is complete.
+Detect stack from project files and enforce limits:
 
-Completion criteria:
-- `docs/BUSINESS.md`, `docs/DESIGN.md`, and `docs/ARCHITECTURE.md` exist.
-- Their corresponding D&F stories are `accepted` (and typically closed) by `pm_acceptor`.
-- `anchor` backlog review has an explicit APPROVED verdict after `sr_pm` creates the backlog.
+**Heavy stacks** (Rust, iOS/Swift, C#, CloudFlare Workers -- detected via `Cargo.toml`, `*.xcodeproj`, `*.csproj`, `wrangler.toml`, `wrangler.jsonc`):
+- Maximum 2 developer agents simultaneously
+- Maximum 1 PM-Acceptor agent simultaneously
+- Total active agents must not exceed 3
 
-Hard prohibition:
-- Do **not** run `sr_pm` to decompose implementation stories before D&F completion criteria are met.
-- Do **not** run `developer` on implementation stories before the above + Anchor APPROVED.
+**Light stacks** (Python, non-CF TypeScript/JavaScript -- detected via `pyproject.toml`, `package.json`):
+- Maximum 4 developer agents simultaneously
+- Maximum 2 PM-Acceptor agents simultaneously
+- Total active agents must not exceed 6
+
+When a project mixes stacks, use the most restrictive limit.
+
+### Stack Detection
+
+```bash
+# Check for heavy stack indicators
+ls Cargo.toml *.xcodeproj *.csproj wrangler.toml wrangler.jsonc 2>/dev/null
+
+# Check for light stack indicators
+ls pyproject.toml package.json 2>/dev/null
+```
+
+## D&F Orchestration (Greenfield)
+
+### Full D&F: Sequential BLT with Questioning Rounds
+
+```
+1. Spawn BA with existing context (vault notes, codebase)
+2. Check output for QUESTIONS_FOR_USER block
+   - If present: relay to user, resume agent with answers, repeat
+   - If absent: BUSINESS.md is done
+3. Spawn Designer with BUSINESS.md content
+4. Same relay loop until DESIGN.md is produced
+5. Spawn Architect with BUSINESS.md + DESIGN.md
+6. Same relay loop until ARCHITECTURE.md is produced
+```
+
+#### Implementation
+
+```python
+# Phase 1: Business Analyst
+ba_id = spawn_agent(prompt="""Use skill business_analyst.
+problem_statement='<user's problem>'
+Existing vault context: <vault search results>
+Ask clarifying questions if needed.""")
+
+ba_result = wait(ba_id)
+
+# Check for questions
+while "QUESTIONS_FOR_USER:" in ba_result:
+    # Present questions to user, get answers
+    user_answers = ask_user(extract_questions(ba_result))
+    resume_agent(ba_id, prompt=f"User answers: {user_answers}")
+    ba_result = wait(ba_id)
+
+close_agent(ba_id)
+
+# Phase 2: Designer (sequential, needs BUSINESS.md)
+business_md = read_file("docs/BUSINESS.md")
+designer_id = spawn_agent(prompt=f"""Use skill designer.
+product_context from BUSINESS.md:
+{business_md}""")
+
+# Same question relay loop...
+
+# Phase 3: Architect (sequential, needs BUSINESS.md + DESIGN.md)
+design_md = read_file("docs/DESIGN.md")
+arch_id = spawn_agent(prompt=f"""Use skill architect.
+proposal from BUSINESS.md + DESIGN.md:
+{business_md}
+{design_md}""")
+
+# Same question relay loop...
+```
+
+### BLT Convergence (MANDATORY after all three documents exist)
+
+All three BLT members cross-review each other's work for consistency.
+Can run in parallel (max 3 agents):
+
+```python
+# Read all three docs
+business = read_file("docs/BUSINESS.md")
+design = read_file("docs/DESIGN.md")
+architecture = read_file("docs/ARCHITECTURE.md")
+all_docs = f"BUSINESS.md:\n{business}\n\nDESIGN.md:\n{design}\n\nARCHITECTURE.md:\n{architecture}"
+
+# Spawn cross-reviews in parallel
+ba_review = spawn_agent(prompt=f"""Use skill business_analyst.
+Cross-review: check DESIGN.md and ARCHITECTURE.md against BUSINESS.md.
+{all_docs}
+Output BLT_ALIGNED if consistent, or BLT_INCONSISTENCIES with specific issues.""")
+
+designer_review = spawn_agent(prompt=f"""Use skill designer.
+Cross-review: check BUSINESS.md and ARCHITECTURE.md against DESIGN.md.
+{all_docs}
+Output BLT_ALIGNED if consistent, or BLT_INCONSISTENCIES with specific issues.""")
+
+arch_review = spawn_agent(prompt=f"""Use skill architect.
+Cross-review: check BUSINESS.md and DESIGN.md against ARCHITECTURE.md.
+{all_docs}
+Output BLT_ALIGNED if consistent, or BLT_INCONSISTENCIES with specific issues.""")
+
+# Wait for all three
+ba_result = wait(ba_review)
+designer_result = wait(designer_review)
+arch_result = wait(arch_review)
+
+# Check convergence (max 3 rounds)
+for round in range(3):
+    if all("BLT_ALIGNED" in r for r in [ba_result, designer_result, arch_result]):
+        break  # Convergence complete
+    # Collect inconsistencies, present to user, re-run owning agents
+    # ...
+```
+
+### Post-D&F: Sr PM / Anchor Iterative Loop
+
+The Sr PM and Anchor form a loop. The backlog is NOT ready until the Anchor returns APPROVED.
+
+```python
+for round in range(3):
+    # Step 1: Spawn Sr PM
+    srpm_id = spawn_agent(prompt=f"""Use skill sr_pm.
+mode=greenfield_backlog.
+Read docs/BUSINESS.md, docs/DESIGN.md, docs/ARCHITECTURE.md.
+Create self-contained stories with all context embedded.
+{f'Address Anchor gaps: {anchor_gaps}' if round > 0 else ''}""")
+    srpm_result = wait(srpm_id)
+    close_agent(srpm_id)
+
+    # Step 2: Spawn Anchor
+    anchor_id = spawn_agent(prompt=f"""Use skill anchor.
+mode=backlog_review.
+epic_id={epic_id}.
+Review the backlog for gaps. Return APPROVED or REJECTED.""")
+    anchor_result = wait(anchor_id)
+    close_agent(anchor_id)
+
+    if "APPROVED" in anchor_result:
+        break  # Backlog is ready
+    anchor_gaps = extract_gaps(anchor_result)
+
+# If 3 rounds exhausted without APPROVED: escalate to user
+```
+
+## Execution Loop (Post-Backlog Approval)
+
+```python
+while True:
+    # 1. Check for delivered stories awaiting review
+    delivered = shell("nd search 'delivered' | head -10")
+    if delivered:
+        # Spawn PM-Acceptor (respect concurrency limits)
+        pm_id = spawn_agent(prompt=f"Use skill pm_acceptor. story_id={story_id}.")
+        pm_result = wait(pm_id)
+        close_agent(pm_id)
+        continue
+
+    # 2. Check for rejected stories
+    rejected = shell("nd search 'rejected' | head -10")
+    if rejected:
+        dev_id = spawn_agent(prompt=f"Use skill developer. story_id={story_id}. Rework.")
+        dev_result = wait(dev_id)
+        close_agent(dev_id)
+        continue
+
+    # 3. Pick ready work
+    ready = shell("nd ready")
+    if not ready:
+        break  # All work complete
+
+    # Spawn developers (respect concurrency limits)
+    dev_id = spawn_agent(prompt=f"Use skill developer. story_id={story_id}.")
+    dev_result = wait(dev_id)
+    close_agent(dev_id)
+```
+
+## QUESTIONS_FOR_USER Relay
+
+When an agent output contains `QUESTIONS_FOR_USER:`, the orchestrator:
+
+1. Extracts the questions block
+2. Presents them to the user
+3. Resumes the agent with answers
+
+```python
+if "QUESTIONS_FOR_USER:" in agent_result:
+    questions = extract_between(agent_result, "QUESTIONS_FOR_USER:", "END_QUESTIONS")
+    user_answers = ask_user(questions)
+    resume_agent(agent_id, prompt=f"User answers:\n{user_answers}")
+    agent_result = wait(agent_id)
+```
+
+## Hard-TDD Orchestration
+
+When a story has the `hard-tdd` label:
+
+### Phase 1: RED (Test Author)
+
+```python
+nd_labels_add(story_id, "tdd-red")
+test_author = spawn_agent(prompt=f"""Use skill developer. story_id={story_id}.
+RED PHASE: Write tests ONLY. Do not implement production code.
+Tests must prove the AC when they pass. Commit test files only.""")
+wait(test_author)
+close_agent(test_author)
+
+# Record test commit
+test_commit = shell("git rev-parse HEAD")
+
+# PM reviews tests
+pm_id = spawn_agent(prompt=f"""Use skill pm_acceptor. story_id={story_id}.
+RED PHASE review: If these tests passed, would they prove the story is done?""")
+pm_result = wait(pm_id)
+close_agent(pm_id)
+```
+
+### Phase 2: GREEN (Implementer)
+
+```python
+nd_labels_rm(story_id, "tdd-red")
+nd_labels_add(story_id, "tdd-green")
+
+implementer = spawn_agent(prompt=f"""Use skill developer. story_id={story_id}.
+GREEN PHASE: Make the existing tests pass. Do NOT modify test files.
+Test commit: {test_commit}""")
+wait(implementer)
+close_agent(implementer)
+
+# Verify test files untouched
+tampered = shell(f"git diff {test_commit} --name-only -- '*_test.go' '*.test.*' '*.spec.*'")
+if tampered:
+    # Reject, restore tests, re-spawn implementer
+    shell(f"git checkout {test_commit} -- {tampered}")
+```
 
 ## Decision Rules (What To Run Next)
 
-1. **If there are delivered stories awaiting review**
-   - Condition: `bd list --status in_progress --label delivered`
-   - Next skill: `pm_acceptor`
+| Priority | Condition | Next Skill |
+|----------|-----------|------------|
+| 1 | Delivered stories awaiting review | `pm_acceptor` |
+| 2 | Rejected stories need rework | `developer` (rework) |
+| 3 | Ready work exists | `developer` (new) |
+| 4 | Backlog quality issues (post-D&F) | `sr_pm` (repair) |
+| 5 | D&F incomplete (greenfield) | `business_analyst` -> `designer` -> `architect` |
+| 6 | D&F complete, no backlog | `sr_pm` -> `anchor` loop |
+| 7 | Milestone complete | `retro` |
 
-2. **If there are rejected stories**
-   - Condition: `bd list --status open --label rejected`
-   - Next skill: `developer` (rework the specific rejected story)
-
-3. **If there is ready work**
-   - Condition: `bd ready` (blocker-aware; preferred over `bd list --ready`)
-   - Next skill: `developer` (pick highest priority ready story)
-
-4. **If backlog quality is preventing execution (post-D&F only)**
-   - Condition: D&F is complete and accepted, but stories still lack context, ACs, testing requirements, or integration wiring
-   - Next skill: `sr_pm` (repair story quality; make stories self-contained)
-
-5. **If you are in Discovery & Framing (greenfield) and D&F is not complete**
-   - Next skills (strict order): `business_analyst` -> `designer` -> `architect`
-   - Loop each through `pm_acceptor` until accepted before advancing.
-
-6. **If greenfield D&F is complete**
-   - Next skills (strict order): `sr_pm` -> `anchor`
-   - Only after Anchor APPROVED should implementation developer loops begin.
-
-7. **If a milestone epic is complete (all stories accepted)**
-   - Next skill: `retro`
-
-## Invocation (Codex CLI Prompt Convention)
-
-Use one prompt per step and be explicit about IDs.
+## Required nd Operations
 
 ```bash
-codex "Use skill orchestrator. epic_id=bd-1234. Determine the next persona to run based on bd state and tell me exactly which skill to invoke next."
+nd prime           # Full project context
+nd ready           # Unblocked work
+nd search "delivered"  # Delivered stories
+nd search "rejected"   # Rejected stories
+nd show <id>       # Full story context
+nd stats           # Backlog statistics
 ```
 
-Then run the recommended persona:
+## Invocation
 
 ```bash
-codex "Use skill developer. story_id=bd-5678. Implement exactly this story and write evidence+proof to bd. Set status delivered."
+codex "Use skill orchestrator. Use Paivot to build <description>."
+codex "Use skill orchestrator. epic_id=PROJ-a1b2. Drive this epic to completion."
+codex "Use skill orchestrator. Pick the next ready story and advance it."
 ```
-
-```bash
-codex "Use skill pm_acceptor. story_id=bd-5678. Review evidence only and accept or reject. Update bd status accordingly."
-```
-
-## Required bd Operations (When Available)
-
-The orchestrator should use these commands to drive decisions:
-
-```bash
-bd sync
-bd ready --pretty
-bd list --status in_progress --label delivered --pretty
-bd list --status open --label rejected --pretty
-bd show <story-id> --json
-```
-
-If `bd` is not available, the orchestrator must request the story text and current labels/status pasted into the chat and proceed in “paste mode”.

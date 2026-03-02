@@ -1,6 +1,9 @@
 ---
 name: retro
-description: Run a retrospective for a completed epic/milestone. Harvest LEARNINGS and OBSERVATIONS from accepted stories, distill actionable insights, and write a retro summary back into bd (and optionally a .learnings/ file).
+description: >
+  Run a retrospective for a completed epic/milestone. Harvest LEARNINGS and
+  OBSERVATIONS from accepted stories, distill actionable insights, and write
+  vault knowledge notes for future sessions.
 ---
 
 # Retro (Ephemeral, One Epic)
@@ -8,22 +11,18 @@ description: Run a retrospective for a completed epic/milestone. Harvest LEARNIN
 ## Inputs
 
 Required:
-- `epic_id`: `bd-...` (preferred), OR
+- `epic_id`: nd epic ID (preferred), OR
 - `stories_text`: pasted accepted stories + notes
-
-Optional:
-- `write_file=true|false` (default true): create a `.learnings/<epic-id>-retro.md` file if the repo has a `.learnings/` directory (or create it if appropriate)
 
 ## Workflow
 
 ### 1) Load Accepted Stories In The Epic
 
-If `bd` is available:
+If nd is available:
 
 ```bash
-bd sync
-bd list --parent <epic-id> --status closed --pretty
-bd list --parent <epic-id> --status closed --json
+nd show <epic-id>
+nd search "<epic-id>"
 ```
 
 For each story, extract:
@@ -40,16 +39,16 @@ Produce:
 - Concrete fixes (checklists, story templates, test mandates)
 - Backlog updates needed (new stories, changed AC patterns)
 
-### 3) Write Retro Output
+### 3) Write Retro Output to nd
 
 Write a structured retro note into the epic:
 
-```markdown
-# Retrospective: <epic-id> - <Epic Title>
+```bash
+nd update <epic-id> --append-notes "# Retrospective: <epic-id> - <Epic Title>
 
 ## Source Stories
-- bd-...
-- bd-...
+- PROJ-...
+- PROJ-...
 
 ## Learnings (Actionable)
 1. <learning> (Action: <what to change>; Applies to: <future stories>)
@@ -60,31 +59,47 @@ Write a structured retro note into the epic:
 
 ## Backlog Follow-Ups
 - [ ] Create story: <title> (Reason: <why>)
-- [ ] Update story template: <change>
+- [ ] Update story template: <change>"
 ```
 
-If `bd` is available:
+### 4) Capture Learnings to Vault (Mandatory)
+
+Each actionable insight becomes a vault note with `actionable: pending` so the Sr PM can incorporate it into future stories:
 
 ```bash
-bd update <epic-id> --append-notes "<paste retro block>"
-bd sync
+vlt vault="Claude" create name="<Insight Title>" \
+  path="_inbox/<Insight Title>.md" \
+  content="---\ntype: pattern\nscope: project\nproject: <project>\nstatus: active\nactionable: pending\ncreated: $(date +%Y-%m-%d)\n---\n\n# <Insight Title>\n\n## Context\n<what epic/story revealed this>\n\n## Insight\n<the learning>\n\n## Action\n<what should change in future work>" silent
 ```
 
-If writing a file, create/update:
-- `.learnings/<epic-id>-retro.md` with the same content
+For debug insights:
+
+```bash
+vlt vault="Claude" create name="<Debug Title>" \
+  path="_inbox/<Debug Title>.md" \
+  content="---\ntype: debug\nscope: project\nproject: <project>\nstatus: active\nactionable: pending\ncreated: $(date +%Y-%m-%d)\n---\n\n# <Debug Title>\n\n## Symptoms\n<what was observed>\n\n## Root Cause\n<why it happened>\n\n## Fix\n<what resolved it>" silent
+```
+
+### 5) Update Project Index
+
+```bash
+vlt vault="Claude" append file="projects/<project>" \
+  content="## Retro: <epic-id> ($(date +%Y-%m-%d))\n- <key learnings summary>\n- <link to vault notes created>"
+```
 
 ## Outputs / Evidence
 
 - Epic notes updated with the retro summary
-- Optional `.learnings/<epic-id>-retro.md`
+- Vault notes created with `actionable: pending` for Sr PM consumption
 
 ## Hard Rules
 
 - This role does not implement code.
 - Learnings must be actionable (a concrete prevention rule or backlog change), not vague.
+- Every insight must be captured in the vault, not just in nd notes.
 
-## Invocation (Codex CLI Prompt Convention)
+## Invocation
 
 ```bash
-codex "Use skill retro. epic_id=bd-1234. Harvest learnings from accepted stories, write a structured retro into bd notes, and propose actionable follow-ups."
+codex "Use skill retro. epic_id=PROJ-a1b2. Harvest learnings from accepted stories and create vault notes."
 ```

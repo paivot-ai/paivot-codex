@@ -1,83 +1,94 @@
 # Paivot Methodology (Global Codex Setup)
 
-This file is a *global* reference for the Paivot “manual orchestration” workflow when using Codex.
+This file is a *global* reference for the Paivot automated orchestration workflow in Codex.
 
-The Paivot skills are installed under `~/.codex/skills/` (not per-repo). Repos may optionally carry their own `AGENTS.md`, but this doc is meant to be reusable across projects.
+Paivot skills are installed under `~/.codex/skills/`. Repos may carry their own `AGENTS.md`, but this doc is reusable across projects.
 
-## The bd Contract (Status + Evidence + Proof)
+## The nd Contract (Status + Evidence + Proof)
 
-All personas coordinate through a single source of truth: the `bd` story.
-
-Each skill MUST keep a minimal contract inside the story notes (append-only), using these fields:
-
-- `status`: one of `new`, `in_progress`, `delivered`, `accepted`, `rejected`
-- `evidence`: commands run, logs/test output summaries, commit SHAs/branches, links if any
-- `proof`: a structured checklist that a reviewer can evaluate (especially AC-by-AC)
-
-Canonical notes block (copy/paste into `bd update <id> --append-notes ...`):
+All personas coordinate through nd story notes. Each skill MUST maintain a contract:
 
 ```markdown
-## bd_contract
+## nd_contract
 status: <new|in_progress|delivered|accepted|rejected>
 
 ### evidence
-- <bullet list; include commands and key output summaries>
+- <commands run, outputs, SHAs>
 
 ### proof
-- [ ] AC #1: <verifiable statement> (Code: <path>, Test: <path>, Evidence: <link/snippet>)
-- [ ] AC #2: ...
+- [ ] AC #1: <verifiable statement>
 ```
 
-**Append-only rule:** prefer `bd update <id> --append-notes "<block>"`. If multiple `bd_contract` blocks exist, the last one is authoritative.
+**Append-only rule:** use `nd update <id> --append-notes "<block>"`. The last `nd_contract` block is authoritative.
 
-## Role Semantics (Preserved From Task()/FSM)
+## Status + Label Mapping
 
-- `developer` skill:
-  - reads the `bd` story as the only source of truth (or requests it pasted)
-  - implements exactly that story
-  - writes “Implementation Evidence” + the `bd_contract` block
-  - sets contract `status: delivered` and adds the `delivered` label
-  - does NOT close the story
+| Contract Status | nd Status | Labels |
+|----------------|-----------|--------|
+| `new` | `open` | (none) |
+| `in_progress` | `in_progress` | (none) |
+| `delivered` | `in_progress` | `delivered` |
+| `accepted` | `closed` | `accepted` |
+| `rejected` | `open` | `rejected` |
 
-- `pm_acceptor` skill:
-  - reads the `bd` story + evidence only
-  - accepts or rejects with explicit criteria
-  - sets contract `status: accepted` or `rejected`
-  - updates labels accordingly (`accepted` or `rejected`)
-  - closes the story when accepted
+## Role Semantics
 
-The original Go FSM + Claude hooks are not part of this repo; orchestration is manual via the `orchestrator` skill and `bd` story state.
+- `developer`: reads nd story, implements exactly the AC, writes evidence + proof, sets `delivered`. Does NOT close.
+- `pm_acceptor`: reads nd story + evidence, accepts (closes) or rejects with explicit criteria.
+- `sr_pm`: creates/repairs nd stories to be self-contained and executable.
+- `business_analyst`, `designer`, `architect`: D&F roles producing docs and backlog context.
+- `anchor`: adversarial reviewer (binary outcomes: APPROVED/REJECTED or VALIDATED/GAPS_FOUND).
+- `retro`: harvests learnings and writes vault knowledge notes with `actionable: pending`.
+- `orchestrator`: automated dispatcher using `spawn_agent`.
+
+## Vault Knowledge Protocol
+
+The Obsidian vault ("Claude") is the persistent knowledge layer:
+
+1. **Session start**: Search vault for project context, decisions, patterns
+2. **During work**: Capture decisions, debug insights, patterns as vault notes
+3. **Session end**: Update project index note
+
+```bash
+vlt vault="Claude" search query="<project>"
+vlt vault="Claude" create name="<Title>" path="_inbox/<Title>.md" content="..." silent
+vlt vault="Claude" append file="projects/<project>" content="..."
+```
+
+## Concurrency Limits
+
+Heavy stacks (Rust, iOS, C#, CF Workers): max 2 dev + 1 PM + 3 total.
+Light stacks (Python, TS/JS): max 4 dev + 2 PM + 6 total.
+
+## Git Workflow (Trunk-Based Development)
+
+- `main`: protected, merges via PR
+- `story/<id>`: feature branches per story
+- No shared sync branches
 
 ## Skills
 
-- `orchestrator`: manual dispatcher for which persona to run next based on `bd` status/labels
-- `developer`: implement one story and deliver with proof
-- `pm_acceptor`: accept/reject one delivered story using evidence-based review
-- `sr_pm`: create/repair backlog stories so they are self-contained and executable
-- `business_analyst`, `designer`, `architect`: Discovery & Framing roles that produce/update docs and translate into backlog context
-- `anchor`: adversarial backlog/milestone review (binary outcomes)
-- `retro`: harvest learnings after an epic/milestone completes
+- `orchestrator`: automated dispatcher via spawn_agent
+- `developer`: implement one story, deliver with proof
+- `pm_acceptor`: accept/reject one delivered story
+- `sr_pm`: create/repair backlog stories
+- `business_analyst`, `designer`, `architect`: D&F roles
+- `anchor`: adversarial reviewer
+- `retro`: harvest learnings
+- `nd`: issue tracker operations
+- `vlt`: vault CLI operations
+- `vault_knowledge`: knowledge capture protocol
 
-## Using bd (Preferred) vs Paste Mode (Fallback)
+## Delivery Proof Preflight
 
-If `bd` is available and the repo has a `.beads/` database, skills should use `bd show`, `bd update`, labels, and `bd sync`.
+```bash
+scripts/verify-delivery.sh <story-id>
+```
 
-If `bd` is not available or the project is not a beads repo, skills will ask you to paste:
-- the full story text (including ACs and any rejection notes)
-- current status/labels
-and you will update `bd` (or your tracker) manually.
+Checks presence/shape of delivery evidence in nd notes/labels; does not validate code.
 
 ## From CLAUDE.md
 
 ```
 Please refer to @AGENTS.md for all other instructions. Follow them strictly and do not deviate.
 ```
-
-## Optional Tooling: Delivery Proof Preflight
-
-To reduce “rejected for missing evidence” churn, there is a lightweight verifier:
-
-- Run: `~/.codex/tools/paivot/verify-delivery.sh <story-id>`
-- Example: `~/.codex/tools/paivot/verify-delivery.sh bd-a1b2`
-
-This only checks the presence/shape of delivery evidence in `bd` notes/labels; it does not validate code correctness.

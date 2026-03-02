@@ -1,48 +1,96 @@
 # Git Workflow (Paivot Codex)
 
-**Paivot uses trunk-based development via `beads-sync`. This is prescriptive, not optional.**
+**Paivot uses trunk-based development with feature branches per story.**
 
 ## Core Principle
 
-**Stories are tracked in beads (`bd`), NOT in git branches.**
+**Stories are tracked in nd, NOT in git branches.**
 
-Beads' hash-based IDs (e.g. `bd-a1b2`) and merge semantics are designed for concurrent work on a shared branch. Epic/feature branching defeats that design and increases conflict frequency.
+Each story gets its own short-lived branch (`story/<id>`), merged to `main` via PR when accepted. This replaces the previous `beads-sync` shared branch workflow.
 
 ## Branch Structure
 
-- `main`: protected (merges via PR)
-- `beads-sync`: shared sync branch where all story work is committed
-- branches only for long experiments (> 1 week, may discard): requires `BEADS_NO_DAEMON=1`
+- `main`: protected (merges via PR only)
+- `story/<id>`: one branch per story, branched from `main`
+- Long experiments (> 1 week, may discard): use `experiment/<name>`
 
-## Initial Setup (One Time, For New Repos)
+## Story Branch Workflow
 
-```bash
-bd init --branch beads-sync
-git push -u origin beads-sync
-```
-
-If `main` is protected, keep a long-lived PR from `beads-sync` to `main` and merge periodically (daily/per milestone).
-
-## Daily Workflow (Per Session)
+### Starting a Story
 
 ```bash
-bd sync
-git pull --rebase origin beads-sync
-
-# ... implement stories, run tests, commit ...
-
-bd sync
-git pull --rebase origin beads-sync
-git push origin beads-sync
-git status  # should be up to date with origin/beads-sync
+git checkout main
+git pull origin main
+git checkout -b story/<story-id>
 ```
 
-## When Branching Is Allowed
-
-- Normal INVEST stories (< 2 days): work on `beads-sync`
-- Experiments (> 1 week, may discard): you may branch, but must disable daemon behavior:
+### During Implementation
 
 ```bash
-export BEADS_NO_DAEMON=1
+# Commit frequently with story ID prefix
+git add <files>
+git commit -m "feat(<story-id>): <description>"
+
+# Keep up to date with main
+git pull --rebase origin main
 ```
 
+### Delivering a Story
+
+```bash
+git push origin story/<story-id>
+
+# Update nd with commit info
+nd update <story-id> --append-notes "Branch: story/<story-id>, SHA: $(git rev-parse HEAD)"
+nd labels add <story-id> delivered
+```
+
+### After PM Acceptance
+
+```bash
+# Create PR (or merge directly if repo allows)
+gh pr create --base main --head story/<story-id> \
+  --title "<story-id>: <title>" \
+  --body "Closes story <story-id>. All AC verified."
+
+# After merge, clean up
+git checkout main
+git pull origin main
+git branch -d story/<story-id>
+```
+
+## Commit Message Convention
+
+```
+<type>(<story-id>): <concise description>
+
+Types: feat, fix, refactor, test, docs, chore
+```
+
+Examples:
+```
+feat(PROJ-a1b2): add user authentication endpoint
+fix(PROJ-c3d4): correct rate limit header format
+test(PROJ-e5f6): add integration tests for payment flow
+```
+
+## Parallel Work
+
+Multiple developers can work simultaneously on different stories since each has its own branch. Coordination happens through nd dependencies, not git branching.
+
+```bash
+# Terminal 1
+codex "Use skill developer. story_id=PROJ-a1b2."
+
+# Terminal 2
+codex "Use skill developer. story_id=PROJ-c3d4."
+```
+
+## Migration from beads-sync
+
+If a repo previously used `beads-sync`:
+
+1. Merge `beads-sync` to `main` via PR
+2. Delete `beads-sync` branch
+3. Remove `.beads/` directory if present
+4. Use `nd import --from-beads` to migrate issues (if applicable)

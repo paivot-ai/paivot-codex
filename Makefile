@@ -4,7 +4,7 @@ SHELL := /bin/bash
 
 CODEX_HOME ?= $(HOME)/.codex
 PAIVOT_TOOLS_DIR := $(CODEX_HOME)/tools/paivot
-PAIVOT_SKILLS := anchor architect business_analyst designer developer orchestrator pm_acceptor retro sr_pm
+PAIVOT_SKILLS := anchor architect business_analyst designer developer nd orchestrator pm_acceptor retro sr_pm vault_knowledge vlt
 
 .PHONY: help
 help: ## Print this help
@@ -19,13 +19,21 @@ help: ## Print this help
 	@echo "Env:"
 	@echo "  CODEX_HOME=$(CODEX_HOME)"
 
+.PHONY: check-prereqs
+check-prereqs: ## Verify nd and vlt are installed
+	@echo "Checking prerequisites..."
+	@command -v nd >/dev/null 2>&1 || { echo "ERROR: nd is not installed. See https://github.com/RamXX/nd"; exit 1; }
+	@command -v vlt >/dev/null 2>&1 || { echo "ERROR: vlt is not installed. See https://github.com/RamXX/vlt"; exit 1; }
+	@echo "  nd:  $$(nd --version 2>/dev/null || echo 'installed')"
+	@echo "  vlt: $$(vlt --version 2>/dev/null || echo 'installed')"
+	@echo "Prerequisites OK."
+
 .PHONY: install-global
-install-global: ## Install Paivot skills + global AGENTS.md into CODEX_HOME (default: ~/.codex)
+install-global: check-prereqs ## Install Paivot skills + global AGENTS.md into CODEX_HOME (default: ~/.codex)
 	@bash -euo pipefail -c '\
 	  echo "Installing Paivot methodology into: $(CODEX_HOME)"; \
 	  mkdir -p "$(CODEX_HOME)/skills" "$(PAIVOT_TOOLS_DIR)"; \
 	  \
-	  # If a previous install created a nested skills folder, archive it (non-destructive). \
 	  if [ -d "$(CODEX_HOME)/skills/skills" ]; then \
 	    mkdir -p "$(CODEX_HOME)/_archive"; \
 	    ts="$$(date +%Y%m%d-%H%M%S)"; \
@@ -49,11 +57,20 @@ install-global: ## Install Paivot skills + global AGENTS.md into CODEX_HOME (def
 	  done; \
 	  \
 	  install -m 0644 "AGENTS.global.md" "$(CODEX_HOME)/AGENTS.md"; \
-	  install -m 0755 "verify-delivery.py" "$(PAIVOT_TOOLS_DIR)/verify-delivery.py"; \
-	  install -m 0755 "verify-delivery.sh" "$(PAIVOT_TOOLS_DIR)/verify-delivery.sh"; \
+	  install -m 0755 "scripts/verify-delivery.sh" "$(PAIVOT_TOOLS_DIR)/verify-delivery.sh"; \
+	  install -m 0755 "scripts/notify-dispatcher.sh" "$(PAIVOT_TOOLS_DIR)/notify-dispatcher.sh"; \
 	  \
 	  echo "Installed:"; \
 	  echo "  Skills:     $(CODEX_HOME)/skills/{$(PAIVOT_SKILLS)}"; \
 	  echo "  AGENTS:     $(CODEX_HOME)/AGENTS.md"; \
-	  echo "  Tools:      $(PAIVOT_TOOLS_DIR)/verify-delivery.{py,sh}"; \
+	  echo "  Tools:      $(PAIVOT_TOOLS_DIR)/"; \
 	'
+
+.PHONY: verify
+verify: ## Run delivery proof preflight for a story (usage: make verify STORY=PROJ-a1b2)
+	@if [ -z "$(STORY)" ]; then echo "Usage: make verify STORY=<story-id>"; exit 1; fi
+	@bash scripts/verify-delivery.sh "$(STORY)"
+
+.PHONY: clean
+clean: ## Remove __pycache__ and other generated files
+	rm -rf __pycache__

@@ -1,10 +1,8 @@
-# Paivot Codex Skills (Manual Orchestration)
+# Paivot Codex Skills (Automated Orchestration)
 
-This repo contains Codex Skills migrated from the Paivot Claude agents. The skills live under `.agents/skills/`.
+This repo contains Codex Skills for the Paivot methodology. Skills live under `.agents/skills/`.
 
 ## Global Install
-
-This repo can install the skills and a global `AGENTS.md` into a Codex home directory (default: `~/.codex`):
 
 ```bash
 make install-global
@@ -16,103 +14,119 @@ To install somewhere else:
 make install-global CODEX_HOME=/path/to/codex-home
 ```
 
-The installed global methodology doc is sourced from `AGENTS.global.md`.
+## Prerequisites
 
-## Capabilities + Limits (Codex)
+The following tools must be in PATH:
 
-- **Single runner**: Codex does not spawn truly independent subagents with isolated context inside one run. Persona “skills” are instruction sets, not separate processes.
-- **Parallelism**: we can run shell/file operations in parallel, and you can run multiple Codex invocations in parallel in separate terminals/sessions. Coordination is via `bd` only.
-- **Context discipline**: each skill must re-load the story from `bd` (or pasted story text) and treat it as the only source of truth.
+| Tool | Purpose | Install |
+|------|---------|---------|
+| `nd` | Issue tracker (vault-backed) | [github.com/RamXX/nd](https://github.com/RamXX/nd) |
+| `vlt` | Obsidian vault CLI | [github.com/RamXX/vlt](https://github.com/RamXX/vlt) |
 
-> `bd` evolves quickly. Treat `bd --help` as authoritative for flags/commands and update these templates when syntax changes.
+### Codex Config Requirements
 
-## The bd Contract (Status + Evidence + Proof)
+Ensure `~/.codex/config.toml` includes:
 
-All personas coordinate through a single source of truth: the `bd` story.
+```toml
+[features]
+enable_spawn_agent = true
+enable_parallel_execution = true
+```
 
-Each skill MUST keep a minimal contract inside the story notes (append-only), using these fields:
+### Vault Setup
 
-- `status`: one of `new`, `in_progress`, `delivered`, `accepted`, `rejected`
-- `evidence`: commands run, logs/test output summaries, commit SHAs/branches, links if any
-- `proof`: a structured checklist that a reviewer can evaluate (especially AC-by-AC)
+The Paivot methodology uses an Obsidian vault named "Claude" for persistent knowledge:
 
-Canonical notes block (copy/paste into `bd update <id> --append-notes ...`):
+```bash
+vlt vaults                           # Verify vault exists
+vlt vault="Claude" search query=""   # Test connectivity
+```
+
+## Capabilities
+
+- **spawn_agent orchestration**: The orchestrator skill uses `spawn_agent`/`wait`/`resume_agent`/`close_agent` for automated multi-agent workflows.
+- **Vault-backed knowledge**: All agents read from and write to the Obsidian vault for cross-session learning.
+- **nd issue tracking**: Stories are tracked in nd (not bd, not git branches). Issues are plain markdown files with YAML frontmatter.
+- **Trunk-based development**: Work on feature branches, merge via PR to main. No shared sync branches.
+
+## The nd Contract (Status + Evidence + Proof)
+
+All personas coordinate through nd story notes. Each skill maintains an append-only contract:
 
 ```markdown
-## bd_contract
+## nd_contract
 status: <new|in_progress|delivered|accepted|rejected>
 
 ### evidence
-- <bullet list; include commands and key output summaries>
+- <commands run, outputs, SHAs>
 
 ### proof
-- [ ] AC #1: <verifiable statement> (Code: <path>, Test: <path>, Evidence: <link/snippet>)
-- [ ] AC #2: ...
+- [ ] AC #1: <verifiable statement>
 ```
 
-**Append-only rule:** use `bd update <id> --append-notes "<block>"` for contract/evidence/proof. If multiple `bd_contract` blocks exist, **the last one is authoritative**.
+If multiple `nd_contract` blocks exist, the last one is authoritative.
 
-## Role Semantics (Preserved From Task()/FSM)
+## Role Semantics
 
-- `developer` skill:
-  - reads the `bd` story as the only source of truth (or requests it pasted)
-  - implements exactly that story
-  - writes “Implementation Evidence” + the `bd_contract` block
-  - sets contract `status: delivered` and adds the `delivered` label
-  - does NOT close the story
+- `developer`: reads nd story, implements exactly the AC, writes evidence + proof, sets `delivered`
+- `pm_acceptor`: reads nd story + evidence, accepts (closes) or rejects with explicit criteria
+- `sr_pm`: creates/repairs nd stories to be self-contained and executable
+- `business_analyst`, `designer`, `architect`: D&F roles that produce docs and backlog context
+- `anchor`: adversarial backlog/milestone reviewer (binary outcomes only)
+- `retro`: harvests learnings and writes vault knowledge notes
+- `orchestrator`: automated dispatcher using spawn_agent
 
-- `pm_acceptor` skill:
-  - reads the `bd` story + evidence only
-  - accepts or rejects with explicit criteria
-  - sets contract `status: accepted` or `rejected`
-  - updates labels accordingly (`accepted` or `rejected`)
-  - closes the story when accepted
+## Dispatcher Mode
 
-## No FSM Enforcer (`piv`)
+When Paivot is invoked ("use Paivot", "Paivot this"), the orchestrator enters **dispatcher mode**:
 
-Unlike some Claude/OpenCode setups, **Codex does not use the external FSM enforcer (`piv`)**. We rely on:
-- strict skill boundaries
-- `bd` as the single source of truth
-- the `bd_contract` evidence/proof bar
+- Spawns agents via `spawn_agent` -- does NOT do work directly
+- Relays questions from agents to the user
+- Manages nd state transitions
+- Captures knowledge to vault
 
-Orchestration is manual via the `orchestrator` skill and `bd` story state.
+The dispatcher NEVER writes code, D&F documents, or story files directly.
 
-## Git Workflow (Beads-Native, Trunk-Based)
+## Concurrency Limits
 
-**Paivot uses trunk-based development via `beads-sync`. NO epic branches. NO feature branches per story.**
+Stack-dependent limits to prevent resource exhaustion:
 
-Why: Beads’ hash IDs (`bd-a1b2`) + merge semantics are designed for concurrent work on a shared branch. Feature/epic branching defeats that architecture.
+**Heavy stacks** (Rust, iOS, C#, CloudFlare Workers):
+- Max 2 developer agents, 1 PM-Acceptor, 3 total
 
-Branch structure:
+**Light stacks** (Python, TypeScript/JavaScript):
+- Max 4 developer agents, 2 PM-Acceptor, 6 total
+
+## Git Workflow (Trunk-Based Development)
+
 - `main`: protected, merges via PR
-- `beads-sync`: shared sync branch where **all** story work is committed
-- branches only for long experiments (> 1 week, may discard): requires `BEADS_NO_DAEMON=1` (the daemon does not handle branching workflows reliably)
+- `story/<id>`: feature branches for individual stories
+- No shared sync branches (beads-sync is retired)
 
-Operational rules:
-- Stories are tracked in `bd`, not in git branches.
-- If you want parallel execution, run multiple Codex sessions in parallel, each implementing a separate story, all committing to `beads-sync`.
-- Use `bd sync` before/after critical operations to force immediate synchronization.
-
-See `paivot-codex/docs/GIT_WORKFLOW.md` for the consolidated workflow.
+See `docs/GIT_WORKFLOW.md` for details.
 
 ## Skills
 
-- `orchestrator`: manual dispatcher for which persona to run next based on `bd` status/labels
-- `developer`: implement one story and deliver with proof
-- `pm_acceptor`: accept/reject one delivered story using evidence-based review
-- `sr_pm`: create/repair backlog stories so they are self-contained and executable
-- `business_analyst`, `designer`, `architect`: Discovery & Framing roles that produce/update docs and translate into backlog context
-- `anchor`: adversarial backlog/milestone review (binary outcomes)
-- `retro`: harvest learnings after an epic/milestone completes
+| Skill | Purpose |
+|-------|---------|
+| `orchestrator` | Automated dispatcher via spawn_agent |
+| `developer` | Implement one story, deliver with proof |
+| `pm_acceptor` | Accept/reject one delivered story |
+| `sr_pm` | Create/repair backlog stories |
+| `business_analyst` | D&F: business requirements |
+| `designer` | D&F: user experience design |
+| `architect` | D&F: technical architecture |
+| `anchor` | Adversarial backlog/milestone review |
+| `retro` | Harvest learnings after milestone |
+| `nd` | Issue tracker operations |
+| `vlt` | Vault CLI operations |
+| `vault_knowledge` | Knowledge capture protocol |
 
-## Using bd (Preferred) vs Paste Mode (Fallback)
+## Using nd (Preferred) vs Paste Mode (Fallback)
 
-If `bd` is available and the repo has a `.beads/` database, skills should use `bd show`, `bd update`, labels, and `bd sync`.
+If nd is available, skills use `nd show`, `nd update`, `nd labels`, `nd ready`.
 
-If `bd` is not available or the project is not a beads repo, skills will ask you to paste:
-- the full story text (including ACs and any rejection notes)
-- current status/labels
-and you will update `bd` (or your tracker) manually.
+If nd is not available, skills ask you to paste story text and you update manually.
 
 ## From CLAUDE.md
 

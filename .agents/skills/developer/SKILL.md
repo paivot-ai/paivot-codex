@@ -1,6 +1,9 @@
 ---
 name: developer
-description: Implement exactly one bd story using the story as the single source of truth. Deliver with concrete proof (tests/logs/commit) written back into the same bd story. Mark contract status delivered; do not close the story.
+description: >
+  Implement exactly one nd story using the story as the single source of truth.
+  Deliver with concrete proof (tests/logs/commit) written back into the same nd story.
+  Mark contract status delivered; do not close the story.
 ---
 
 # Developer (Ephemeral, One Story)
@@ -8,7 +11,7 @@ description: Implement exactly one bd story using the story as the single source
 ## Inputs
 
 Required:
-- `story_id`: `bd-...` (preferred), OR
+- `story_id`: nd issue ID (e.g. `PROJ-a1b2`), OR
 - `story_text`: pasted story text (must include acceptance criteria and prior notes/rejections)
 
 Optional:
@@ -17,65 +20,76 @@ Optional:
 
 ## Workflow
 
-### 0) Git Workflow (Beads-Native, Trunk-Based)
+### 0) Git Workflow (Trunk-Based Development)
 
-**All story work commits go to `beads-sync`. No epic branches. No feature branches per story.**
-
-If this repo uses git and has a `beads-sync` branch:
+Work on a feature branch. No shared sync branches.
 
 ```bash
-git checkout beads-sync
-git pull --rebase origin beads-sync
+git checkout -b story/<story-id>
+git pull --rebase origin main
 ```
 
-### 1) Read bd Story (Single Source Of Truth)
+### 1) Read nd Story (Single Source Of Truth)
 
-If `story_id` is provided and `bd` works:
+If `story_id` is provided and `nd` is available:
 
 ```bash
-bd sync
-bd show <story-id> --json
+nd show <story-id>
 ```
 
 Hard rule: **all context comes from the story itself** (requirements, scope, testing, constraints, rejection notes). If key context is missing, do not guess.
 
-### 2) If Context Is Insufficient: Block Immediately
+### 2) Check Vault for Relevant Context
 
-Write a precise block note (what is missing and why it prevents implementation) and stop.
-
-```bash
-bd update <story-id> --status blocked --append-notes "BLOCKED: Missing <specific context>. Cannot proceed without <specific decision/input>."
-bd sync
-```
-
-### 3) Claim The Story
+Before implementing, search for relevant knowledge:
 
 ```bash
-bd update <story-id> --claim
-bd update <story-id> --append-notes \"## bd_contract\nstatus: in_progress\n\n### evidence\n- Claimed (atomic): <YYYY-MM-DD>\n\n### proof\n- [ ] (pending)\"
-bd sync
+vlt vault="Claude" search query="<key terms from story>"
+vlt vault="Claude" search query="[type:pattern] [project:<project>]"
 ```
 
-If `--claim` fails because the story is already claimed, stop and do not proceed.
+Use any relevant patterns, decisions, or debug insights found.
 
-### 4) Implement Exactly The Acceptance Criteria
+### 3) If Context Is Insufficient: Block Immediately
+
+Write a precise block note and stop.
+
+```bash
+nd update <story-id> --status=blocked --append-notes "BLOCKED: Missing <specific context>. Cannot proceed without <specific decision/input>."
+```
+
+### 4) Claim The Story
+
+```bash
+nd update <story-id> --status=in_progress
+nd update <story-id> --append-notes "## nd_contract
+status: in_progress
+
+### evidence
+- Claimed: $(date +%Y-%m-%d)
+
+### proof
+- [ ] (pending)"
+```
+
+### 5) Implement Exactly The Acceptance Criteria
 
 Rules:
 - No scope creep.
-- No “placeholder” implementation.
+- No "placeholder" implementation.
 - Verify AC-by-AC (numbers and values must match exactly).
-- If the story calls out “SKILLS TO USE”, you must invoke those skills before coding.
+- If the story calls out "SKILLS TO USE", invoke those skills before coding.
 
-### 5) Tests Are Mandatory (Integration Means Real Integration)
+### 6) Tests Are Mandatory (Integration Means Real Integration)
 
 Rules:
 - No skipped tests.
 - Unit tests: ok to mock.
 - Integration tests: **no mocks**; prove success path, not only failure.
 
-If external dependencies prevent tests from running (missing keys, down services), block the story. Do not “soften” tests to make them pass.
+If external dependencies prevent tests from running, block the story.
 
-### 6) Run The Story’s Required Test/CI Commands And Capture Proof
+### 7) Run The Story's Required Test/CI Commands And Capture Proof
 
 Run the narrowest relevant set unless the story explicitly requires a full run.
 
@@ -84,48 +98,84 @@ Capture:
 - pass/fail summary
 - key output snippets (enough to audit)
 
-### 7) Wiring Check (Only When Wiring Is In Scope)
+### 8) Wiring Check (Only When Wiring Is In Scope)
 
-If the story is “library-only” or explicitly references a separate wiring story, do not wire up.
+If the story is "library-only" or explicitly references a separate wiring story, skip.
 
 Otherwise, prove new code is actually reachable:
 - new functions/handlers/middleware have call sites outside their own definitions and test files
 - new dependencies are added to manifests
 - no debug artifacts / conflict markers
 
-### 8) Commit + Push (If This Repo Uses Git)
+### 9) Commit + Push
+
+```bash
+git add <files>
+git commit -m "feat(<story-id>): <concise description>"
+git push origin story/<story-id>
+```
 
 Record commit SHA and branch in evidence.
 
-Trunk-based default:
+### 10) Deliver: Write Evidence + Proof Back Into The Story
+
+1. Add `delivered` label (and clear stale rejection labels).
+2. Append delivery notes with evidence and AC verification table.
+3. Update `nd_contract.status: delivered`.
 
 ```bash
-git status
-git rev-parse --abbrev-ref HEAD   # should be beads-sync
-git rev-parse HEAD                # record SHA
-git push origin beads-sync
+nd labels add <story-id> delivered
+nd labels rm <story-id> rejected 2>/dev/null || true
+
+nd update <story-id> --append-notes "## Implementation Evidence (DELIVERED)
+
+### CI/Test Results
+- Commands run:
+  - <command>
+- Summary: lint PASS, unit PASS (N), integration PASS (N), build PASS
+- Key output:
+  <paste short snippets>
+
+### Commit
+- Branch: story/<story-id>
+- SHA: <sha>
+
+### Wiring (only if in scope)
+- <new thing> -> called from <file:line>
+
+### AC Verification
+| AC # | Requirement | Code Location | Test Location | Status |
+|------|-------------|---------------|---------------|--------|
+| 1 | ... | ... | ... | PASS |
+
+### LEARNINGS (optional)
+- ...
+
+### OBSERVATIONS (unrelated)
+- [ISSUE] <path:line>: <description>
+- [CONCERN] <area>: <description>
+
+## nd_contract
+status: delivered
+
+### evidence
+- <commands + outputs + SHA + wiring pointers>
+
+### proof
+- [x] AC #1: ...
+- [x] AC #2: ..."
 ```
 
-### 9) Deliver: Write Evidence + Proof Back Into The Story And Mark Delivered
+### 11) Capture Knowledge to Vault (If Applicable)
 
-1. Add `delivered` label (and clear stale rejection labels if present).
-2. Append delivery notes containing evidence and an AC verification table.
-3. Update `bd_contract.status: delivered`.
+If you discovered a reusable pattern, made a non-obvious debugging breakthrough, or encountered a sharp edge:
 
 ```bash
-bd update <story-id> --remove-label rejected --remove-label verification-failed --add-label delivered
-bd update <story-id> --append-notes \"## Implementation Evidence (DELIVERED)\n\n### CI/Test Results\n- Commands run:\n  - <command>\n  - <command>\n- Summary: lint PASS, unit PASS (N), integration PASS (N), build PASS\n- Key output:\n  <paste short snippets>\n\n### Commit\n- Branch: beads-sync\n- SHA: <sha>\n\n### Wiring (only if in scope)\n- <new thing> -> called from <file:line>\n\n### AC Verification\n| AC # | Requirement | Code Location | Test Location | Status |\n|------|-------------|---------------|---------------|--------|\n| 1 | ... | ... | ... | PASS |\n\n### LEARNINGS (optional)\n- ...\n\n### OBSERVATIONS (unrelated)\n- [ISSUE] <path:line>: <description>\n- [CONCERN] <area>: <description>\n\n## bd_contract\nstatus: delivered\n\n### evidence\n- <commands + outputs + SHA + wiring pointers>\n\n### proof\n- [x] AC #1: ...\n- [x] AC #2: ...\"
-bd sync
+vlt vault="Claude" create name="<Title>" path="_inbox/<Title>.md" \
+  content="---\ntype: <pattern|debug|decision>\nscope: system\nproject: <project>\nstatus: active\ncreated: $(date +%Y-%m-%d)\n---\n\n# <Title>\n\n<content>" silent
 ```
 
 Hard rule: **incomplete proof is an automatic rejection** by `pm_acceptor`.
-
-## Outputs / Evidence
-
-The only accepted output is a `bd` story updated with:
-- `delivered` label
-- “Implementation Evidence (DELIVERED)” section
-- `bd_contract` status/evidence/proof updated to `delivered`
 
 ## Hard Rules (Process Constraints)
 
@@ -134,8 +184,8 @@ The only accepted output is a `bd` story updated with:
 - Do not close stories (closing is `pm_acceptor`).
 - Do not rely on external context not present in the story.
 
-## Invocation (Codex CLI Prompt Convention)
+## Invocation
 
 ```bash
-codex "Use skill developer. story_id=bd-1234. Read via bd, implement exactly the AC with tests, then write Implementation Evidence + bd_contract proof back into the story and set status delivered."
+codex "Use skill developer. story_id=PROJ-a1b2. Read via nd, implement exactly the AC with tests, then write Implementation Evidence + nd_contract proof back into the story and set status delivered."
 ```
