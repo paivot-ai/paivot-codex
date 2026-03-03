@@ -46,6 +46,8 @@ You NEVER:
 - Skip agents to "save time"
 - Resolve merge conflicts yourself (spawn a developer -- conflict resolution requires code judgment)
 - Edit source files for any reason, including "cleanup" or "git maintenance"
+- Inspect agent worktree internals (cd into worktree dirs, run git log, read source there)
+- Re-close stories that the PM-Acceptor already closed (it closes on acceptance -- just read its output)
 
 ### Bug Triage Protocol
 
@@ -291,6 +293,7 @@ Create properly structured bugs for these discovered issues:
     delivered = shell("nd list --status in_progress --label delivered --json")
     if delivered:
         # Spawn PM-Acceptor (respect concurrency limits)
+        # NOTE: PM-Acceptor closes the story itself on acceptance. Do NOT re-close.
         pm_id = spawn_agent(prompt=f"Use skill pm_acceptor. story_id={story_id}.")
         pm_result = wait(pm_id)
         close_agent(pm_id)
