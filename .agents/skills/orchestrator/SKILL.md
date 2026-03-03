@@ -316,7 +316,14 @@ Create properly structured bugs for these discovered issues:
         break  # Entire backlog complete or all remaining work blocked
     # Pick highest-priority item. Empty result is the ONLY signal that work is done.
 
-    # Spawn developers (respect concurrency limits)
+    # Check for hard-tdd label -- opt-in only, NOT the default
+    story_json = shell(f"nd show {story_id} --json")
+    if "hard-tdd" in story_json:
+        # Two-phase flow (see Hard-TDD Orchestration section below)
+        run_hard_tdd(story_id)
+        continue
+
+    # Normal mode (DEFAULT): one developer writes both code and tests
     dev_id = spawn_agent(prompt=f"Use skill developer. story_id={story_id}.")
     dev_result = wait(dev_id)
     close_agent(dev_id)
