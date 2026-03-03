@@ -86,6 +86,8 @@ When Paivot is invoked ("use Paivot", "Paivot this"), the orchestrator enters **
 - Captures knowledge to vault
 
 The dispatcher NEVER writes code, D&F documents, or story files directly.
+It also NEVER resolves merge conflicts (spawn a developer -- conflict resolution requires code judgment)
+or edits source files for any reason, including "cleanup" or "git maintenance".
 
 ## Concurrency Limits
 

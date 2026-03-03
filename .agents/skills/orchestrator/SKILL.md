@@ -44,6 +44,8 @@ You NEVER:
 - Create story files or bugs yourself
 - Make architectural or design decisions yourself
 - Skip agents to "save time"
+- Resolve merge conflicts yourself (spawn a developer -- conflict resolution requires code judgment)
+- Edit source files for any reason, including "cleanup" or "git maintenance"
 
 ### Bug Triage Protocol
 
