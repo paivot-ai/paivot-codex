@@ -68,6 +68,7 @@ Light stacks (Python, TS/JS): max 4 dev + 2 PM + 6 total.
 
 ## Skills
 
+### Execution Roles
 - `orchestrator`: automated dispatcher via spawn_agent
 - `developer`: implement one story, deliver with proof
 - `pm_acceptor`: accept/reject one delivered story
@@ -75,9 +76,20 @@ Light stacks (Python, TS/JS): max 4 dev + 2 PM + 6 total.
 - `business_analyst`, `designer`, `architect`: D&F roles
 - `anchor`: adversarial reviewer
 - `retro`: harvest learnings
-- `nd`: issue tracker operations
-- `vlt`: vault CLI operations
-- `vault_knowledge`: knowledge capture protocol
+- `intake`: collect feedback, delegate to Sr. PM, execute backlog
+
+### Tools
+- `nd`: issue tracker operations (with resources: CLI reference, workflows, dependencies, epics, storage, patterns, troubleshooting)
+- `vlt`: vault CLI operations (with references: command reference, agentic patterns, advanced techniques, vault architecture)
+- `vault_knowledge`: three-tier knowledge capture protocol
+- `c4`: C4 architecture model (Structurizr DSL, architecture contracts, diagram export)
+
+### Vault Management
+- `vault_capture`: deliberate knowledge capture pass (decisions, patterns, debug insights)
+- `vault_evolve`: refine vault content from session experience (proposals for system, direct edits for project)
+- `vault_status`: vault health overview (note counts, proposals, actionable knowledge)
+- `vault_triage`: review and accept/reject pending system-scope proposals
+- `vault_settings`: view and configure project-level settings (FSM, C4, scope defaults)
 
 ## Delivery Proof Preflight
 

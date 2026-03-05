@@ -4,28 +4,63 @@ description: >
   Obsidian vault CLI for reading, creating, searching, and managing notes in the
   knowledge vault. Use when the user mentions "vault", "vlt", "read a vault note",
   "create a note", "search the vault", "manage frontmatter", "find backlinks",
-  "append to a note", "move a note", or any Obsidian vault operation.
+  "append to a note", "move a note", "check integrity", "detect tampering",
+  or any Obsidian vault operation. Provides comprehensive guidance for using vlt
+  in agentic AI workflows, CI/CD pipelines, and shell scripting.
 ---
 
 # vlt -- Obsidian Vault CLI for Coding Agents
 
-vlt is a fast, zero-dependency CLI for Obsidian vault operations. It reads and writes vault files directly on the filesystem without requiring the Obsidian desktop app.
+vlt is a fast, zero-dependency CLI for Obsidian vault operations. It reads and writes
+vault files directly on the filesystem without requiring the Obsidian desktop app,
+Electron, Node.js, or any network calls. Purpose-built for agentic AI workflows,
+CI/CD pipelines, and shell scripting.
 
-## Vault Discovery
+## When to Use This Skill
+
+- Reading, creating, editing, or searching notes in an Obsidian vault
+- Managing YAML frontmatter properties on notes
+- Navigating vault structure via links, backlinks, tags, and bookmarks
+- Building knowledge management workflows for AI agent sessions
+- Automating vault maintenance (orphans, broken links, unresolved references)
+- Working with daily notes, templates, or tasks
+
+## Core Concepts
+
+### Vault Discovery
+
+vlt locates vaults from Obsidian's config or via explicit parameters:
 
 ```bash
-vlt vault="Claude" read file="Note"        # By vault name
+vlt vault="MyVault" read file="Note"        # By vault name
 vlt vault="/absolute/path" read file="Note"  # By absolute path
-vlt vaults                                   # List all discovered vaults
+vlt vault="~/path" read file="Note"          # By home-relative path
 ```
 
 Environment variables `VLT_VAULT` and `VLT_VAULT_PATH` set defaults.
+Run `vlt vaults` to list all discovered vaults.
 
-## Note Resolution
+### Note Resolution
 
 vlt resolves note titles using a two-pass algorithm:
 1. **Fast pass** -- exact filename match (`<title>.md`), no file I/O
 2. **Alias pass** -- checks frontmatter `aliases` field (case-insensitive)
+
+Reference notes by filename (without `.md`) or by any alias.
+
+### Parameter Syntax
+
+All commands use `key="value"` pairs. Boolean flags are bare words:
+
+```bash
+vlt vault="V" read file="Note" heading="## Section"
+vlt vault="V" create name="Title" path="folder/Title.md" content="..." silent timestamps
+```
+
+### Output Formats
+
+All listing commands support structured output:
+`--json`, `--yaml`, `--csv`, `--tsv`, `--tree` (files only), or plain text (default).
 
 ## Command Quick Reference
 
@@ -38,10 +73,10 @@ vlt resolves note titles using a two-pass algorithm:
 | `append` | Add content to end | `file=`, `content=` (or stdin) |
 | `prepend` | Insert after frontmatter | `file=`, `content=` (or stdin) |
 | `write` | Replace body, keep frontmatter | `file=`, `content=` (or stdin) |
-| `patch` | Edit by heading, line, or old/new | `file=`, `heading=`/`line=`, `content=`/`delete`, `old=`/`new=` |
+| `patch` | Edit by heading or line | `file=`, `heading=`/`line=`, `content=`/`delete` |
 | `delete` | Trash or hard-delete | `file=`, `permanent` (optional) |
 | `move` | Rename with link repair | `path=`, `to=` |
-| `daily` | Create/read daily note | `date=` (optional) |
+| `daily` | Create/read daily note | `date=` (optional, default today) |
 | `files` | List vault files | `folder=`, `ext=`, `total` (optional) |
 
 ### Properties
@@ -52,6 +87,15 @@ vlt resolves note titles using a two-pass algorithm:
 | `property:set` | Set a property | `file=`, `name=`, `value=` |
 | `property:remove` | Remove a property | `file=`, `name=` |
 
+### Links and Navigation
+
+| Command | Purpose | Key Parameters |
+|---------|---------|----------------|
+| `backlinks` | Notes linking to a note | `file=` |
+| `links` | Outgoing links (marks broken) | `file=` |
+| `orphans` | Notes with no incoming links | (none) |
+| `unresolved` | Broken wikilinks vault-wide | (none) |
+
 ### Search
 
 | Command | Purpose | Key Parameters |
@@ -59,21 +103,33 @@ vlt resolves note titles using a two-pass algorithm:
 | `search` | Find by title, content, properties | `query=`, `regex=`, `context=` |
 | `tags` | List all tags | `counts`, `sort="count"` |
 | `tag` | Notes with a tag (hierarchical) | `tag=` |
+| `tasks` | List checkboxes | `file=`/`path=`, `done`/`pending` |
 
-### Links and Navigation
+### Templates, Bookmarks, URI
 
 | Command | Purpose | Key Parameters |
 |---------|---------|----------------|
-| `backlinks` | Notes linking to a note | `file=` |
-| `links` | Outgoing links | `file=` |
-| `orphans` | Notes with no incoming links | (none) |
-| `unresolved` | Broken wikilinks vault-wide | (none) |
+| `templates` | List available templates | (none) |
+| `templates:apply` | Create note from template | `template=`, `name=`, `path=` |
+| `bookmarks` | List bookmarks | (none) |
+| `bookmarks:add` | Bookmark a note | `file=` |
+| `bookmarks:remove` | Remove bookmark | `file=` |
+| `uri` | Generate `obsidian://` URI | `file=`, `heading=`, `block=` |
+
+### Integrity
+
+| Command | Purpose | Key Parameters |
+|---------|---------|----------------|
+| `integrity:baseline` | Register all vault files for tamper detection | (none) |
+| `integrity:status` | Show integrity status of all files | (none) |
+| `integrity:acknowledge` | Re-register after external modification | `file=` or `since=` |
 
 ## Agentic Session Workflow
 
 ### Session Start -- Load Context
 
 ```bash
+# Discover what the vault knows about the current project
 vlt vault="Claude" search query="<project-name>"
 vlt vault="Claude" search query="[type:decision] [project:<name>]"
 vlt vault="Claude" search query="[type:pattern] [status:active]"
@@ -82,40 +138,108 @@ vlt vault="Claude" search query="[type:pattern] [status:active]"
 ### During Work -- Capture Knowledge
 
 ```bash
-vlt vault="Claude" create name="Decision Title" \
-  path="decisions/Decision Title.md" \
-  content="---\ntype: decision\nproject: my-app\nstatus: active\ncreated: $(date +%Y-%m-%d)\n---\n\n# Decision Title\n\n## Context\n...\n## Decision\n...\n## Alternatives\n..." silent timestamps
+# Capture a decision
+vlt vault="Claude" create name="Use WebSockets over SSE" \
+  path="decisions/Use WebSockets over SSE.md" \
+  content="---
+type: decision
+project: my-app
+status: active
+created: 2026-02-19
+---
+# Use WebSockets over SSE
+## Context
+Real-time updates needed for dashboard.
+## Decision
+WebSockets chosen for bidirectional communication.
+## Alternatives
+SSE -- simpler but one-directional." silent timestamps
 ```
 
 ### Session End -- Update Project Index
 
 ```bash
 vlt vault="Claude" append file="projects/my-app" \
-  content="## Session $(date +%Y-%m-%d)\n- What was accomplished\n- Links to new notes"
+  content="## Session 2026-02-19
+- Implemented WebSocket transport
+- Discovered JSONB index limitation
+- [[Use WebSockets over SSE]]"
 ```
 
 ## Search Patterns
 
+### Text Search
 ```bash
-vlt vault="V" search query="authentication"                    # Text search
-vlt vault="V" search query="[status:active] [type:decision]"   # Property filter
-vlt vault="V" search regex="TODO|FIXME|HACK" context="2"       # Regex with context
+vlt vault="V" search query="authentication"
+```
+
+### Property-Filtered Search
+```bash
+vlt vault="V" search query="[status:active] [type:decision]"
+vlt vault="V" search query="caching [project:my-app]"
+```
+
+### Regex Search with Context
+```bash
+vlt vault="V" search regex="TODO|FIXME|HACK" context="2"
 ```
 
 ## Content Manipulation
 
+### Replace a Section
 ```bash
-vlt vault="V" patch file="Note" heading="## Status" content="Completed."  # Replace section
-vlt vault="V" patch file="Note" old="old text" new="new text"             # Find and replace
-vlt vault="V" patch file="Note" heading="## Deprecated" delete            # Delete section
+vlt vault="V" patch file="Note" heading="## Status" content="Completed 2026-02-19."
+```
+The heading must be unique within the note. If duplicate headings exist, patch returns an error with the match count and line numbers.
+
+### Edit by Line Number
+```bash
+vlt vault="V" patch file="Note" line="5" content="Updated line."
+vlt vault="V" patch file="Note" line="10-15" content="Replaced block."
+```
+
+### Delete a Section
+```bash
+vlt vault="V" patch file="Note" heading="## Deprecated" delete
+```
+
+### Replace Entire Body (Keep Frontmatter)
+```bash
+vlt vault="V" write file="Note" content="New body content."
+```
+
+## Stdin Support
+
+Commands accepting `content=` also accept stdin when `content=` is omitted:
+
+```bash
+date | vlt vault="V" append file="Daily Log"
+echo "New content" | vlt vault="V" write file="Note"
+cat data.md | vlt vault="V" create name="Import" path="_inbox/Import.md"
 ```
 
 ## Important Behaviors
 
-- **Exit codes**: 0 on success, 1 on error
-- **Link repair on move**: `move` updates all wikilinks vault-wide
-- **Timestamps**: Opt-in via `timestamps` flag or `VLT_TIMESTAMPS=1`
-- **Path traversal protection**: All paths validated against vault boundary
+- **Exit codes**: 0 on success, 1 on error. Empty results exit 0 silently (Unix convention).
+- **Error output**: Errors go to stderr with `vlt:` prefix.
+- **Link repair on move**: `move` updates all wikilinks and markdown links vault-wide.
+- **Inert zones**: Links, tags, and references inside code blocks, comments, and math are ignored.
+- **Timestamps**: Opt-in via `timestamps` flag or `VLT_TIMESTAMPS=1` env var.
+- **Case-insensitive**: Tag matching and alias resolution are case-insensitive.
+- **Integrity tracking**: All write operations register SHA-256 hashes. `read` warns on mismatch (informational, not blocking). Use `integrity:baseline` for initial registration, `integrity:acknowledge` to accept external changes.
+- **Path traversal protection**: All user-supplied paths are validated against the vault boundary.
+- **Advisory locking**: Write commands acquire exclusive `flock(2)` locks; read commands acquire shared locks. Auto-releases on crash.
+- **Relative vault paths**: In addition to vault names and absolute paths, relative paths (e.g., `.vault/knowledge`) are supported.
+
+## Additional Resources
+
+### Reference Files
+
+For detailed documentation beyond this overview, consult:
+- **`references/command-reference.md`** -- Complete command reference with all parameters, flags, and edge cases
+- **`references/agentic-patterns.md`** -- Proven patterns for AI agent knowledge management workflows
+- **`references/advanced-techniques.md`** -- Advanced features: inert zones, link repair, property search, templates
+- **`references/vault-architecture.md`** -- Vault design principles, frontmatter conventions, folder structure, linking strategies
 
 ## Invocation
 
@@ -123,3 +247,7 @@ vlt vault="V" patch file="Note" heading="## Deprecated" delete            # Dele
 codex "Use skill vlt. Search the vault for testing patterns."
 codex "Use skill vlt. Create a decision note about choosing WebSockets over SSE."
 ```
+
+## Full Documentation
+
+- **GitHub**: [github.com/RamXX/vlt](https://github.com/RamXX/vlt)

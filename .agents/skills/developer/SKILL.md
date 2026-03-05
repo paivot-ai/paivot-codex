@@ -83,11 +83,17 @@ Rules:
 ### 6) Tests Are Mandatory (Integration Means Real Integration)
 
 Rules:
-- No skipped tests.
+- No skipped tests -- this means ALL forms of conditional skipping:
+  `skipif`, `skipUnless`, `requires_*` markers, env-var gates
+  (`@pytest.mark.skipif(not os.environ.get(...))`), `xfail`, `deselected`.
+  A test that was collected but not executed is a skipped test.
+  "0 failures with 0 executions" proves nothing -- it will be rejected.
 - Unit tests: ok to mock.
 - Integration tests: **no mocks**; prove success path, not only failure.
 
 If external dependencies prevent tests from running, block the story.
+If infrastructure IS available (ask the dispatcher for connection details),
+run integration tests unconditionally -- do NOT gate behind env vars.
 
 ### 7) Run The Story's Required Test/CI Commands And Capture Proof
 

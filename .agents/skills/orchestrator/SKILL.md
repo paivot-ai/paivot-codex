@@ -49,6 +49,26 @@ You NEVER:
 - Inspect agent worktree internals (cd into worktree dirs, run git log, read source there)
 - Re-close stories that the PM-Acceptor already closed (it closes on acceptance -- just read its output)
 
+### Infrastructure Context (MANDATORY before first developer spawn)
+
+Before spawning the first developer agent in a session, discover what infrastructure
+is available locally and include connection details in ALL developer agent prompts.
+
+**Discovery protocol:**
+1. `docker ps --format '{{.Names}} {{.Ports}}'` -- running containers
+2. Check for docker-compose files, .env files with connection strings
+3. Check project README/docs for infrastructure requirements
+
+**Include in developer prompts:**
+- List of running services with host:port
+- Database connection details
+- Required env vars with values (or instructions to obtain them)
+- Explicit instruction: "Infrastructure is running. Do NOT gate tests behind env
+  vars. Run integration tests directly against these services."
+
+Without this context, developers will reasonably gate tests behind env vars --
+creating dormant tests that satisfy no testing gate.
+
 ### Bug Triage Protocol
 
 When a Developer or PM-Acceptor agent outputs `DISCOVERED_BUG:` blocks:
@@ -336,6 +356,32 @@ Create properly structured bugs for these discovered issues:
 ```
 
 **Epic completion is NOT a termination event.** The loop keeps running.
+
+## Context Loss Recovery
+
+When context is lost (compaction, new session, restart), the orchestrator recovers
+by inspecting nd state directly:
+
+```python
+# Recovery after context loss
+# 1. Find stories stuck in progress (stale agents)
+stale = shell("nd list --status in_progress --json")
+
+# 2. Check for delivered stories awaiting review
+delivered = shell("nd list --status in_progress --label delivered --json")
+
+# 3. Check for rejected stories needing rework
+rejected = shell("nd list --status in_progress --label rejected --json")
+
+# 4. Resume the execution loop from the top -- nd state is the source of truth
+```
+
+**Before expected context loss**, note the current agent assignments in nd:
+```python
+shell("nd update <story-id> --append-notes 'Agent state: developer active, commit <sha>'")
+```
+
+Recovery always works because nd state is persistent and authoritative.
 
 ## QUESTIONS_FOR_USER Relay
 

@@ -109,6 +109,8 @@ See `docs/GIT_WORKFLOW.md` for details.
 
 ## Skills
 
+### Execution Roles
+
 | Skill | Purpose |
 |-------|---------|
 | `orchestrator` | Automated dispatcher via spawn_agent |
@@ -120,9 +122,26 @@ See `docs/GIT_WORKFLOW.md` for details.
 | `architect` | D&F: technical architecture |
 | `anchor` | Adversarial backlog/milestone review |
 | `retro` | Harvest learnings after milestone |
-| `nd` | Issue tracker operations |
-| `vlt` | Vault CLI operations |
-| `vault_knowledge` | Knowledge capture protocol |
+| `intake` | Collect feedback, delegate to Sr. PM, execute backlog |
+
+### Tools
+
+| Skill | Purpose |
+|-------|---------|
+| `nd` | Issue tracker (with resources: CLI ref, workflows, deps, epics, storage, patterns) |
+| `vlt` | Vault CLI (with references: command ref, agentic patterns, advanced techniques, architecture) |
+| `vault_knowledge` | Three-tier knowledge capture protocol |
+| `c4` | C4 architecture model (Structurizr DSL, contracts, diagrams) |
+
+### Vault Management
+
+| Skill | Purpose |
+|-------|---------|
+| `vault_capture` | Deliberate knowledge capture pass |
+| `vault_evolve` | Refine vault content from session experience |
+| `vault_status` | Vault health overview |
+| `vault_triage` | Review/accept/reject pending system-scope proposals |
+| `vault_settings` | View and configure project-level settings |
 
 ## Using nd (Preferred) vs Paste Mode (Fallback)
 

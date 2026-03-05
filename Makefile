@@ -4,7 +4,7 @@ SHELL := /bin/bash
 
 CODEX_HOME ?= $(HOME)/.codex
 PAIVOT_TOOLS_DIR := $(CODEX_HOME)/tools/paivot
-PAIVOT_SKILLS := anchor architect business_analyst designer developer nd orchestrator pm_acceptor retro sr_pm vault_knowledge vlt
+PAIVOT_SKILLS := anchor architect business_analyst c4 designer developer intake nd orchestrator pm_acceptor retro sr_pm vault_capture vault_evolve vault_knowledge vault_settings vault_status vault_triage vlt
 
 .PHONY: help
 help: ## Print this help

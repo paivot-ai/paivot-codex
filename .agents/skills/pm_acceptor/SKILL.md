@@ -60,6 +60,10 @@ Reject if:
 - "integration tests" are mocked
 - tests prove only failures and never success
 - tests are trivial or non-verifying
+- integration tests were SKIPPED (not executed). Check for "skipped", "deselected",
+  "xfail" in test output. "0 failures with 0 executions" is NOT passing.
+  Tests gated behind env vars (`@pytest.mark.skipif(not os.environ.get(...))`) are
+  dormant code, not integration tests. Verify execution count > 0.
 
 ### Phase 4: Code Quality Spot-Check
 
