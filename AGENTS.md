@@ -47,7 +47,7 @@ vlt vault="Claude" search query=""   # Test connectivity
 - **spawn_agent orchestration**: The orchestrator skill uses `spawn_agent`/`wait`/`resume_agent`/`close_agent` for automated multi-agent workflows.
 - **Vault-backed knowledge**: All agents read from and write to the Obsidian vault for cross-session learning.
 - **nd issue tracking**: Stories are tracked in nd (not bd, not git branches). Issues are plain markdown files with YAML frontmatter.
-- **Trunk-based development**: Work on feature branches, merge via PR to main. No shared sync branches.
+- **Two-level branching**: `main → epic → story`. Story branches isolated from epic/main; PM review gates story→epic merges; epic→main via PR when complete.
 
 ## The nd Contract (Status + Evidence + Proof)
 
@@ -99,13 +99,19 @@ Stack-dependent limits to prevent resource exhaustion:
 **Light stacks** (Python, TypeScript/JavaScript):
 - Max 4 developer agents, 2 PM-Acceptor, 6 total
 
-## Git Workflow (Trunk-Based Development)
+## Git Workflow (Two-Level Branch Model)
 
-- `main`: protected, merges via PR
-- `story/<id>`: feature branches for individual stories
-- No shared sync branches (beads-sync is retired)
+Paivot Codex uses a two-level branching strategy: **`main → epic → story`**
 
-See `docs/GIT_WORKFLOW.md` for details.
+- **`main`**: protected, merges via PR only
+- **`epic/<id>`**: collects approved stories; PM gates story→epic merges; merged to main after epic completion
+- **`story/<id>`**: one branch per story, created from epic branch; developer works in isolation
+
+Developer isolation: Story branches cannot see main/epic branches locally (worktree rooted at story branch).
+PM review gates: Story branches merge to epic only after PM-Acceptor approval.
+Epic integration: All epic stories integrate on epic branch before PR to main.
+
+See `docs/GIT_WORKFLOW.md` for detailed procedures.
 
 ## Skills
 
