@@ -220,6 +220,76 @@ proposal from BUSINESS.md + DESIGN.md:
 first_turn_gate(arch_id, "architect", "ARCHITECTURE.md")
 ```
 
+### Specialist Review Loop (Optional, Setting-Gated)
+
+After each BLT document is produced, check `dnf.specialist_review` in `.vault/knowledge/.settings.yaml`.
+If enabled, spawn the matching challenger to adversarially review the document. On rejection,
+re-spawn the creator with feedback. Loop up to `dnf.max_iterations` (default 3).
+
+```python
+# Challenger mapping: creator skill -> challenger skill, document name, upstream docs
+CHALLENGER_MAP = {
+    "business_analyst": ("ba_challenger", "BUSINESS.md", []),
+    "designer": ("designer_challenger", "DESIGN.md", ["docs/BUSINESS.md"]),
+    "architect": ("architect_challenger", "ARCHITECTURE.md", ["docs/BUSINESS.md", "docs/DESIGN.md"]),
+}
+
+def specialist_review_gate(creator_skill, user_context, max_iterations=None):
+    """After a BLT agent produces its document, run the matching challenger if enabled."""
+    settings = load_settings(".vault/knowledge/.settings.yaml")
+    if not settings.get("dnf.specialist_review", False):
+        return  # Setting disabled, skip review
+
+    if max_iterations is None:
+        max_iterations = settings.get("dnf.max_iterations", 3)
+
+    challenger_skill, doc_name, upstream_paths = CHALLENGER_MAP[creator_skill]
+    doc_content = read_file(f"docs/{doc_name}")
+    upstream_docs = {p: read_file(p) for p in upstream_paths}
+
+    for iteration in range(1, max_iterations + 1):
+        # Spawn challenger
+        upstream_context = "\n\n".join(f"{p}:\n{c}" for p, c in upstream_docs.items())
+        challenger_id = spawn_agent(prompt=f"""Use skill {challenger_skill}.
+Iteration: {iteration} of {max_iterations}.
+User context: {user_context}
+{doc_name}:
+{doc_content}
+{upstream_context}""")
+        review_result = wait(challenger_id)
+        close_agent(challenger_id)
+
+        if "REVIEW_RESULT: APPROVED" in review_result:
+            return  # Document passed review
+
+        # Rejected -- extract feedback and re-spawn creator
+        feedback = extract_between(review_result, "FEEDBACK_FOR_CREATOR:", None)
+        creator_id = spawn_agent(prompt=f"""Use skill {creator_skill}.
+Rework {doc_name} based on challenger feedback (iteration {iteration + 1}):
+{feedback}
+Original user context: {user_context}""")
+        first_turn_gate(creator_id, creator_skill, doc_name)
+        doc_content = read_file(f"docs/{doc_name}")  # Re-read updated document
+
+    # Max iterations exhausted -- escalate to user
+    ask_user(
+        f"The {challenger_skill} rejected {doc_name} after {max_iterations} iterations. "
+        f"Last feedback:\n{feedback}\n\nPlease review and decide how to proceed.")
+```
+
+Usage in the D&F flow (after each `first_turn_gate` call):
+
+```python
+first_turn_gate(ba_id, "business_analyst", "BUSINESS.md")
+specialist_review_gate("business_analyst", user_context)
+
+first_turn_gate(designer_id, "designer", "DESIGN.md")
+specialist_review_gate("designer", user_context)
+
+first_turn_gate(arch_id, "architect", "ARCHITECTURE.md")
+specialist_review_gate("architect", user_context)
+```
+
 ### BLT Convergence (MANDATORY after all three documents exist)
 
 All three BLT members cross-review each other's work for consistency.

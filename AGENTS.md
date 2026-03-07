@@ -89,6 +89,10 @@ The dispatcher NEVER writes code, D&F documents, or story files directly.
 It also NEVER resolves merge conflicts (spawn a developer -- conflict resolution requires code judgment)
 or edits source files for any reason, including "cleanup" or "git maintenance".
 
+### D&F Specialist Review
+
+When `dnf.specialist_review` is enabled (via vault_settings), the orchestrator spawns a challenger agent after each BLT document is produced. Challengers adversarially review the document and return APPROVED or REJECTED. On rejection, the creator is re-spawned with feedback (up to `dnf.max_iterations`, default 3). See the orchestrator skill for the full loop logic.
+
 ## Concurrency Limits
 
 Stack-dependent limits to prevent resource exhaustion:
@@ -127,6 +131,9 @@ See `docs/GIT_WORKFLOW.md` for detailed procedures.
 | `designer` | D&F: user experience design |
 | `architect` | D&F: technical architecture |
 | `anchor` | Adversarial backlog/milestone review |
+| `ba_challenger` | D&F review: adversarial review of BUSINESS.md |
+| `designer_challenger` | D&F review: adversarial review of DESIGN.md |
+| `architect_challenger` | D&F review: adversarial review of ARCHITECTURE.md |
 | `retro` | Harvest learnings after milestone |
 | `intake` | Collect feedback, delegate to Sr. PM, execute backlog |
 

@@ -1,7 +1,7 @@
 ---
 name: sr_pm
 description: >
-  Senior PM persona for creating and repairing Paivot backlogs in nd, AND the ONLY
+  Senior PM persona for creating and repairing Paivot backlogs in nd, AND the DEFAULT
   agent authorized to create bugs (via Bug Triage Mode). Produces self-contained,
   executable stories with embedded context and explicit testing requirements. Receives
   DISCOVERED_BUG reports from Developer and PM-Acceptor, creates fully structured bugs

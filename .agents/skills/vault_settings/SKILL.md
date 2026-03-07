@@ -31,6 +31,9 @@ workflow.sequence: open,in_progress,delivered,review,closed
 workflow.exit_rules: blocked:open,in_progress;rejected:in_progress
 workflow.custom_statuses: delivered,review,rejected
 architecture.c4: false           # C4 model alongside ARCHITECTURE.md
+dnf.specialist_review: false     # challenger review after each BLT document
+dnf.max_iterations: 3            # max creator-challenger loops before escalation
+bug_fast_track: false            # allow non-sr_pm agents to create bugs directly
 ```
 
 ## Step 2: Present Current Configuration

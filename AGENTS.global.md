@@ -75,6 +75,7 @@ Light stacks (Python, TS/JS): max 4 dev + 2 PM + 6 total.
 - `sr_pm`: create/repair backlog stories
 - `business_analyst`, `designer`, `architect`: D&F roles
 - `anchor`: adversarial reviewer
+- `ba_challenger`, `designer_challenger`, `architect_challenger`: D&F specialist review challengers
 - `retro`: harvest learnings
 - `intake`: collect feedback, delegate to Sr. PM, execute backlog
 
