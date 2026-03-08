@@ -32,6 +32,7 @@ nd epics and stories that are:
 - self-contained (no external context required to execute)
 - explicit about acceptance criteria and testing requirements
 - dependency-correct (parent/child and blocks relationships)
+- boundary-mapped (every story declares PRODUCES and CONSUMES)
 
 ## Workflow
 
@@ -85,6 +86,66 @@ Every story must embed everything an ephemeral `developer` needs:
 - interface contracts (inputs/outputs, errors)
 - exact acceptance criteria
 - exact testing requirements (unit/integration/e2e scope and commands)
+- boundary maps (PRODUCES/CONSUMES -- see below)
+
+### Boundary Maps (CRITICAL)
+
+Every story must declare explicit interface contracts:
+
+```
+PRODUCES:
+- <file_path> -> <exported function/type/endpoint with signature>
+
+CONSUMES:
+- <upstream_story_id>: <file_path> -> <function/type/endpoint used>
+```
+
+Example:
+```
+PRODUCES:
+- src/auth.ts -> generateToken(userId: string): string
+- src/auth.ts -> verifyToken(token: string): Claims | null
+
+CONSUMES:
+- (none -- leaf story)
+```
+
+Downstream story example:
+```
+PRODUCES:
+- src/api/login.ts -> POST /api/login handler
+- src/middleware.ts -> authMiddleware()
+
+CONSUMES:
+- PROJ-a1b: src/auth.ts -> generateToken(), verifyToken()
+```
+
+This forces interface thinking before implementation. When a downstream story is planned,
+its CONSUMES section is verified against the upstream story's PRODUCES section. No more
+silent assumptions about what exists. Contracts are explicit and checked by the Anchor.
+
+### Copy, Don't Paraphrase (CRITICAL)
+
+When embedding technical context from ARCHITECTURE.md into stories, COPY exact strings for:
+- Column names, table names, and data types
+- HTTP header names and API field names
+- Environment variable names
+- Scoring algorithms and business rules
+- Status codes and error formats
+- Endpoint paths and URL patterns
+
+Do NOT rename, paraphrase, or "improve" these values. A single renamed column
+(e.g., `location_lat` instead of `center_lat`) causes Anchor rejection and cascading
+developer failures.
+
+### The hard-tdd Label
+
+Apply `hard-tdd` label to stories requiring two-phase TDD enforcement (Test Author writes
+tests first, then a separate Implementer writes code to pass them). Apply when:
+- User explicitly requests it for specific stories, epics, or areas
+- Security-critical paths, complex state machines, data migrations
+- Stories where subtle bugs would be costly to detect post-acceptance
+Use judgment to apply it proactively; user can always remove it.
 
 **Story creation:**
 
@@ -96,6 +157,13 @@ nd create "<Story Title>" -t story -p <priority> \
 - Non-goals: ...
 - Constraints: ...
 - Dependencies: ...
+
+## Boundary Map
+PRODUCES:
+- <file_path> -> <exported function/type/endpoint with signature>
+
+CONSUMES:
+- <upstream_story_id>: <file_path> -> <function/type/endpoint used>
 
 ## Acceptance Criteria
 1. ...
@@ -147,15 +215,32 @@ Before declaring the backlog "ready", ensure integration points are covered:
 - each cross-component connection has a story
 - each external system interaction has integration test requirements
 
-### 7) Pre-Anchor Self-Check (Mandatory)
+### 7) Boundary Map Consistency Check (Mandatory)
+
+Verify boundary map consistency: every CONSUMES reference must match a PRODUCES in an
+upstream story. Missing or mismatched interfaces will be caught by the Anchor and cause
+rejection.
+
+### 8) Pre-Anchor Self-Check (Mandatory)
 
 Reject your own backlog before the Anchor does:
 - missing walking skeleton stories (end-to-end slice)
 - missing horizontal layers (auth, logging, error handling, observability)
 - missing "prove it works" tests (integration/e2e)
 - unclear ACs or missing test commands
+- boundary map inconsistencies (CONSUMES without matching PRODUCES)
 
-### 8) Mark Actionable Vault Notes as Incorporated
+### 9) Terminology Audit (Mandatory -- run after all stories are created)
+
+After creating all stories, cross-reference every embedded technical term against
+ARCHITECTURE.md. Common divergence patterns to catch:
+- Renamed columns (stories say `location_lat`, ARCHITECTURE.md says `center_lat`)
+- Different header conventions
+- Env var naming mismatches
+- Unit mismatches (stories say `km`, ARCHITECTURE.md says `miles`)
+- PK type differences
+
+### 10) Mark Actionable Vault Notes as Incorporated
 
 ```bash
 vlt vault="Claude" property:set name="actionable" value="incorporated" file="<Note>"
@@ -164,8 +249,11 @@ vlt vault="Claude" property:set name="actionable" value="incorporated" file="<No
 ## Bug Triage Mode (`mode=bug_triage`)
 
 When the orchestrator spawns me with DISCOVERED_BUG reports (from Developer or PM-Acceptor
-agents), I create properly structured bugs. This is my EXCLUSIVE responsibility -- no other
-agent creates bugs.
+agents), I create properly structured bugs. This is my DEFAULT responsibility -- when
+bug_fast_track is disabled (the default), no other agent creates bugs. When bug_fast_track
+is enabled or a story has the `pm-creates-bugs` label, PM-Acceptor can create bugs directly
+with mandatory guardrails (P0, parent epic, discovered-by-pm label). See pm_acceptor skill
+for details.
 
 **All bugs are P0.** Bugs represent broken behavior in the system. They are never P1/P2/P3.
 A bug that isn't worth P0 is a feature request or tech debt, not a bug.
@@ -227,7 +315,7 @@ status: new
 - Do not allow stories to be accepted without integration proof when integration is in scope.
 - If you discover missing requirements, ask; do not invent them.
 - In greenfield, do not create backlog stories until D&F docs are accepted.
-- Only `sr_pm` creates bugs (via Bug Triage Mode). All bugs are P0.
+- `sr_pm` is the DEFAULT bug creator (via Bug Triage Mode). When bug_fast_track is enabled, PM-Acceptor can also create bugs with guardrails. All bugs are P0.
 
 ## Invocation
 

@@ -39,6 +39,17 @@ nd show <story-id>
 
 Hard rule: **all context comes from the story itself** (requirements, scope, testing, constraints, rejection notes). If key context is missing, do not guess.
 
+### Hard-TDD Phases
+
+When prompt includes **RED PHASE**: write tests ONLY (unit + integration). No implementation
+code. Define contracts/stubs within test files. Deliver with AC-to-test mapping.
+
+When prompt includes **GREEN PHASE**: tests are already committed. Write implementation to
+make them pass. MUST NOT modify test files (`*_test.go`, `*.test.*`, `*.spec.*`). If a test
+is wrong, report it -- do not fix it.
+
+When neither phase is specified: normal mode (write both tests and code).
+
 ### 2) Check Vault for Relevant Context
 
 Before implementing, search for relevant knowledge:
@@ -95,7 +106,25 @@ If external dependencies prevent tests from running, block the story.
 If infrastructure IS available (ask the dispatcher for connection details),
 run integration tests unconditionally -- do NOT gate behind env vars.
 
-### 7) Run The Story's Required Test/CI Commands And Capture Proof
+### 7) Pre-Delivery Self-Check (MANDATORY)
+
+Before marking a story as delivered, scan your changed files for incomplete implementation:
+- Stubs: `NotImplementedError`, `panic("todo")`, `return {}`, bare `pass`, `unimplemented!()`
+- Thin files: files with only type definitions or empty function bodies
+- TODO markers: should be resolved or documented in the delivery proof explaining why they remain
+
+```bash
+# Example: search for common stub patterns in changed files
+grep -rn 'NotImplementedError\|panic("todo")\|unimplemented!\|raise NotImplementedError' <changed-files>
+```
+
+Fix any stub or thin file issues before delivery. TODO markers should be resolved
+or documented in the delivery proof explaining why they remain.
+
+The PM-Acceptor runs this same check as its FIRST step (before LLM review). Delivering
+code that fails this check wastes everyone's tokens.
+
+### 8) Run The Story's Required Test/CI Commands And Capture Proof
 
 Run the narrowest relevant set unless the story explicitly requires a full run.
 
@@ -104,7 +133,7 @@ Capture:
 - pass/fail summary
 - key output snippets (enough to audit)
 
-### 8) Wiring Check (Only When Wiring Is In Scope)
+### 9) Wiring Check (Only When Wiring Is In Scope)
 
 If the story is "library-only" or explicitly references a separate wiring story, skip.
 
@@ -113,7 +142,7 @@ Otherwise, prove new code is actually reachable:
 - new dependencies are added to manifests
 - no debug artifacts / conflict markers
 
-### 9) Commit + Push
+### 10) Commit + Push
 
 ```bash
 git add <files>
@@ -123,7 +152,7 @@ git push origin story/<story-id>
 
 Record commit SHA and branch in evidence.
 
-### 10) Deliver: Write Evidence + Proof Back Into The Story
+### 11) Deliver: Write Evidence + Proof Back Into The Story
 
 1. Add `delivered` label (and clear stale rejection labels).
 2. Append delivery notes with evidence and AC verification table.
@@ -178,7 +207,7 @@ status: delivered
 - [x] AC #2: ..."
 ```
 
-### 11) Capture Knowledge to Vault (If Applicable)
+### 12) Capture Knowledge to Vault (If Applicable)
 
 If you discovered a reusable pattern, made a non-obvious debugging breakthrough, or encountered a sharp edge:
 

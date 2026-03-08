@@ -30,6 +30,20 @@ For each story, extract:
 - `OBSERVATIONS` sections
 - repeated rejection patterns (if any)
 
+### Never Summarize Summaries (CRITICAL)
+
+When extracting insights, ALWAYS work from the raw source material:
+- Read LEARNINGS and OBSERVATIONS from each story's delivery proof directly
+- Read actual code state and test output
+- Cross-reference with nd comments and story notes
+
+NEVER compress a summary of a summary. Each level of insight must regenerate from the
+level below plus actual code/test state. Compounding compression causes information
+loss -- each pass silently drops details until the insight is too vague to act on.
+
+If the epic has many stories, process them in batches but always from the raw delivery
+proofs, not from a previous batch's summary.
+
 ### 2) Distill Actionable Insights
 
 Produce:
@@ -38,6 +52,7 @@ Produce:
 - Root causes (process, testing, architecture, story quality)
 - Concrete fixes (checklists, story templates, test mandates)
 - Backlog updates needed (new stories, changed AC patterns)
+- Hard-TDD effectiveness (compare rejection rates, bug discovery, overhead between `hard-tdd` and normal stories -- informs whether label scope should expand or contract)
 
 ### 3) Write Retro Output to nd
 
@@ -80,7 +95,41 @@ vlt vault="Claude" create name="<Debug Title>" \
   content="---\ntype: debug\nscope: project\nproject: <project>\nstatus: active\nactionable: pending\ncreated: $(date +%Y-%m-%d)\n---\n\n# <Debug Title>\n\n## Symptoms\n<what was observed>\n\n## Root Cause\n<why it happened>\n\n## Fix\n<what resolved it>" silent
 ```
 
-### 5) Update Project Index
+### 5) UAT Script Generation (MANDATORY for Epic Retro)
+
+After extracting insights, generate a User Acceptance Test script for the completed
+epic. This is a human-readable document that tells the user exactly how to verify
+what was built.
+
+Format:
+```
+## UAT: <Epic Title>
+
+### Prerequisites
+- [Setup steps: commands to run, services to start]
+
+### Test: <Observable capability 1>
+Do:
+1. [Exact command or UI action]
+2. [Next step]
+Expected:
+- [Specific observable outcome -- exact text, URL, behavior]
+
+### Test: <Observable capability 2>
+Do:
+1. [Exact command or UI action]
+Expected:
+- [Specific observable outcome]
+```
+
+Rules for UAT scripts:
+- Every step is a copy-pasteable command or specific UI action
+- Every expected result describes exactly what the user should see
+- Derived from the epic's stories, NOT from implementation details
+- Non-blocking: generate and include in the retro output, the user tests when convenient
+- Write to `.vault/knowledge/uat/` with the epic ID in the filename
+
+### 6) Update Project Index
 
 ```bash
 vlt vault="Claude" append file="projects/<project>" \

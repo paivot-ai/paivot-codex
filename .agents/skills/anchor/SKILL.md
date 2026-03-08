@@ -65,6 +65,7 @@ Backlog review targets:
 - dependency graph incoherence (parallel stories that will conflict, missing `blocks`)
 - INVEST violations (stories too large, not independent, not testable)
 - incorrect milestone labels (bidirectional check: every story has correct milestone label, every D&F item represented)
+- **boundary map inconsistencies**: every CONSUMES reference must match a PRODUCES in an upstream story. Missing or mismatched interfaces = REJECTED
 
 Milestone review targets:
 - "delivered" claims without proof
@@ -97,6 +98,25 @@ If nd is available:
 ```bash
 nd update <epic-id> --append-notes "<paste review block>"
 ```
+
+## Issue Cap Per Round (CRITICAL)
+
+Report a MAXIMUM of 5 issues per rejection round, prioritized by severity:
+1. Context divergence from D&F docs (wrong column names, header names, etc.)
+2. Missing walking skeletons or integration stories
+3. Horizontal layers instead of vertical slices
+4. Boundary map inconsistencies (CONSUMES without matching PRODUCES)
+5. Everything else
+
+If more than 5 issues exist, report only the top 5 and note "additional issues likely
+remain." This forces iterative convergence: fix 5, resubmit, catch the next batch.
+
+## Hard-TDD Validation (Milestone Review)
+
+For stories with `hard-tdd` label, verify:
+- Two distinct commits: test commit (RED) before implementation commit (GREEN)
+- Test files NOT modified in the implementation commit
+- If pattern is missing, the hard-tdd workflow was bypassed -- GAPS_FOUND
 
 ## Hard Rules
 
