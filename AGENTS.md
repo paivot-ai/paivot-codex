@@ -47,7 +47,7 @@ vlt vault="Claude" search query=""   # Test connectivity
 - **spawn_agent orchestration**: The orchestrator skill uses `spawn_agent`/`wait`/`resume_agent`/`close_agent` for automated multi-agent workflows.
 - **Vault-backed knowledge**: All agents read from and write to the Obsidian vault for cross-session learning.
 - **nd issue tracking**: Stories are tracked in nd (not bd, not git branches). Issues are plain markdown files with YAML frontmatter.
-- **Two-level branching**: `main → epic → story`. Story branches isolated from epic/main; PM review gates story→epic merges; epic→main via direct merge when complete.
+- **Trunk-based branching**: `main` plus `story/<id>` branches. PM review gates story merges; no shared sync branches.
 
 ## The nd Contract (Status + Evidence + Proof)
 
@@ -103,17 +103,16 @@ Stack-dependent limits to prevent resource exhaustion:
 **Light stacks** (Python, TypeScript/JavaScript):
 - Max 4 developer agents, 2 PM-Acceptor, 6 total
 
-## Git Workflow (Two-Level Branch Model)
+## Git Workflow (Trunk-Based)
 
-Paivot Codex uses a two-level branching strategy: **`main → epic → story`**
+Paivot Codex uses a trunk-based story-branch model: **`main` + `story/<id>`**
 
-- **`main`**: protected, epics merge directly to main
-- **`epic/<id>`**: collects approved stories; PM gates story→epic merges; merged to main after epic completion
-- **`story/<id>`**: one branch per story, created from epic branch; developer works in isolation
+- **`main`**: protected trunk, always releasable
+- **`story/<id>`**: one branch per story, created from `main`
 
-Developer isolation: Story branches cannot see main/epic branches locally (worktree rooted at story branch).
-PM review gates: Story branches merge to epic only after PM-Acceptor approval.
-Epic integration: All epic stories integrate on epic branch before merging to main.
+PM review gates: story branches merge only after PM-Acceptor has accepted the story.
+Accepted means the story is both `closed` in nd and labeled `accepted`.
+There are no shared integration branches.
 
 See `docs/GIT_WORKFLOW.md` for detailed procedures.
 

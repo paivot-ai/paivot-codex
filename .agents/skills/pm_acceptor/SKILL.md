@@ -28,9 +28,9 @@ Hard rules:
 
 ## Hard-TDD Review Lens
 
-If story has `hard-tdd` label, adjust review based on phase:
-- **Test Review** (`tdd-red` label): "If these tests passed, would they prove the story is done?" Verify AC coverage, integration tests present, contracts clear. Tests may not pass yet (RED state).
-- **Implementation Review** (`tdd-green` label): Verify test files were NOT modified (git diff), all tests pass, then proceed with standard review. Test tampering = immediate rejection.
+If the story has `hard-tdd`, adjust review based on the dispatcher prompt phase:
+- **RED PHASE review**: "If these tests passed, would they prove the story is done?" Verify AC coverage, integration tests present, and contracts are clear. Tests may still be red.
+- **GREEN PHASE review**: Verify test files were NOT modified (git diff), all tests pass, then proceed with standard review. Test tampering = immediate rejection.
 - **No hard-tdd label**: standard review below.
 
 ## Workflow: Verification Ladder (review in this order -- cheapest first)
@@ -126,7 +126,7 @@ status: accepted
 nd close <story-id> --reason="Accepted: <brief summary>" --start=<next-id>
 ```
 
-The `accepted` label is a merge gate. Story branches cannot be merged without it.
+The `accepted` label is part of the merge gate. Story branches cannot be merged until the story is both labeled `accepted` and `closed`.
 Both steps are mandatory and must be in this order.
 
 ### Epic Auto-Close (MANDATORY after every acceptance)

@@ -441,7 +441,7 @@ stale = shell("nd list --status in_progress --json")
 delivered = shell("nd list --status in_progress --label delivered --json")
 
 # 3. Check for rejected stories needing rework
-rejected = shell("nd list --status in_progress --label rejected --json")
+rejected = shell("nd list --status open --label rejected --json")
 
 # 4. Resume the execution loop from the top -- nd state is the source of truth
 ```
@@ -476,7 +476,6 @@ When a story has the `hard-tdd` label:
 ### Phase 1: RED (Test Author)
 
 ```python
-nd_labels_add(story_id, "tdd-red")
 test_author = spawn_agent(prompt=f"""Use skill developer. story_id={story_id}.
 RED PHASE: Write tests ONLY. Do not implement production code.
 Tests must prove the AC when they pass. Commit test files only.""")
@@ -496,9 +495,6 @@ close_agent(pm_id)
 ### Phase 2: GREEN (Implementer)
 
 ```python
-nd_labels_rm(story_id, "tdd-red")
-nd_labels_add(story_id, "tdd-green")
-
 implementer = spawn_agent(prompt=f"""Use skill developer. story_id={story_id}.
 GREEN PHASE: Make the existing tests pass. Do NOT modify test files.
 Test commit: {test_commit}""")
@@ -548,7 +544,7 @@ nd ready           # Unblocked work (supports same filters as nd list)
 nd ready --priority 0 --json       # P0 bugs first
 nd ready --parent <epic-id> --json # Ready work scoped to an epic
 nd list --status in_progress --label delivered --json  # Delivered stories
-nd list --status in_progress --label rejected --json   # Rejected stories
+nd list --status open --label rejected --json          # Rejected stories
 nd show <id>       # Full story context
 nd stats           # Backlog statistics
 ```

@@ -25,8 +25,8 @@ Optional:
 Work on a feature branch. No shared sync branches.
 
 ```bash
-git checkout -b story/<story-id>
-git pull --rebase origin main
+git fetch origin
+git checkout -b story/<story-id> origin/main
 ```
 
 ### 1) Read nd Story (Single Source Of Truth)
@@ -157,7 +157,7 @@ Record commit SHA and branch in evidence.
 - NEVER `git add .` or `git add -A` -- always add specific files by name
 - NEVER commit `.vault/` files (issues, state, lock files) -- they are runtime state, not code
 - Commit to your STORY branch only -- never push to epic or main directly
-- Keep story branch up to date: `git fetch origin && git rebase origin/epic/EPIC_ID && git push --force-with-lease`
+- Keep story branch up to date: `git fetch origin && git rebase origin/main && git push --force-with-lease`
 
 ### 11) Deliver: Write Evidence + Proof Back Into The Story
 

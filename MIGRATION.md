@@ -7,7 +7,7 @@ This document covers the migration from the original bd (Beads) based Paivot Cod
 | Area | Before (bd) | After (nd) |
 |------|-------------|------------|
 | Issue tracker | `bd` (Beads) | `nd` (vault-backed) |
-| Git workflow | `beads-sync` shared branch | `story/<id>` feature branches |
+| Git workflow | `beads-sync` shared branch | `main` + `story/<id>` branches |
 | Orchestration | Manual ("run this skill next") | Automated via `spawn_agent` |
 | Knowledge | None (stateless across sessions) | Vault-backed (`vlt` + Obsidian) |
 | Contract block | `bd_contract` | `nd_contract` |
