@@ -1,6 +1,7 @@
 .DEFAULT_GOAL := help
 
 SHELL := /bin/bash
+VERSION     := $(shell cat VERSION)
 
 CODEX_HOME ?= $(HOME)/.codex
 PAIVOT_TOOLS_DIR := $(CODEX_HOME)/tools/paivot
@@ -70,6 +71,14 @@ install-global: check-prereqs ## Install Paivot skills + global AGENTS.md into C
 verify: ## Run delivery proof preflight for a story (usage: make verify STORY=PROJ-a1b2)
 	@if [ -z "$(STORY)" ]; then echo "Usage: make verify STORY=<story-id>"; exit 1; fi
 	@bash scripts/verify-delivery.sh "$(STORY)"
+
+.PHONY: bump
+bump: ## Bump version: make bump v=1.37.0 (updates VERSION file)
+ifndef v
+	$(error Usage: make bump v=X.Y.Z)
+endif
+	@echo "$(v)" > VERSION
+	@echo "Version bumped to $(v)"
 
 .PHONY: clean
 clean: ## Remove __pycache__ and other generated files

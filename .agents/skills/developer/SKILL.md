@@ -152,6 +152,13 @@ git push origin story/<story-id>
 
 Record commit SHA and branch in evidence.
 
+### Git Hygiene (CRITICAL)
+
+- NEVER `git add .` or `git add -A` -- always add specific files by name
+- NEVER commit `.vault/` files (issues, state, lock files) -- they are runtime state, not code
+- Commit to your STORY branch only -- never push to epic or main directly
+- Keep story branch up to date: `git fetch origin && git rebase origin/epic/EPIC_ID && git push --force-with-lease`
+
 ### 11) Deliver: Write Evidence + Proof Back Into The Story
 
 1. Add `delivered` label (and clear stale rejection labels).
