@@ -6,7 +6,7 @@ Stories are tracked in nd (not git branches). The branch hierarchy isolates stor
 
 ## Branch Structure
 
-- **`main`**: protected (merges via PR only), represents production-ready code
+- **`main`**: protected, represents production-ready code
 - **`epic/<id>`**: one branch per epic; collects all approved stories for that epic
 - **`story/<id>`**: one branch per story; created from epic branch; developer works in isolation
 
@@ -137,26 +137,15 @@ When all stories in epic have been approved and merged to epic branch:
 
 ```bash
 git fetch origin
-gh pr create \
-  --base main \
-  --head epic/EPIC_ID \
-  --title "epic(EPIC_ID): [epic title]" \
-  --body "Completed epic with stories: $(nd children EPIC_ID --json | jq -r '.[].id' | paste -sd, -)"
-```
-
-Wait for:
-- [ ] CI passes on epic branch (full test suite with all stories integrated)
-- [ ] User/PM reviews PR for milestone readiness
-
-Then merge and cleanup:
-
-```bash
 git checkout main
 git pull origin main
 git merge --no-ff origin/epic/EPIC_ID -m "Merge epic/EPIC_ID to main"
 git push origin main
 git push origin --delete epic/EPIC_ID
 ```
+
+Note: This is a solo-developer workflow -- epics merge directly to main without PRs.
+PR-based review gates belong in paivot-enterprise for team workflows.
 
 ## nd State Isolation (CRITICAL)
 
@@ -207,7 +196,7 @@ As orchestrator, you manage the git workflow:
 - Create epic branches before spawning developers
 - Create story branches from the correct epic branch
 - Merge story→epic after PM approval (handle merge conflicts by spawning developer if needed)
-- Create PR epic→main when epic is complete
+- Merge epic→main when epic is complete
 - Clean up branches after merge
 
 ### You MUST NOT do:
