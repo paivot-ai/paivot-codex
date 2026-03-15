@@ -90,6 +90,7 @@ Light stacks (Python, TS/JS): max 4 dev + 2 PM + 6 total.
 - `intake`: collect feedback, delegate to Sr. PM, execute backlog
 
 ### Tools
+- `pvg`: deterministic control plane for shared nd routing, queue selection, story transitions, merge gating, and recovery
 - `nd`: issue tracker operations (with resources: CLI reference, workflows, dependencies, epics, storage, patterns, troubleshooting)
 - `vlt`: vault CLI operations (with references: command reference, agentic patterns, advanced techniques, vault architecture)
 - `vault_knowledge`: three-tier knowledge capture protocol

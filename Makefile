@@ -4,7 +4,7 @@ SHELL := /bin/bash
 VERSION     := $(shell cat VERSION)
 
 CODEX_HOME ?= $(HOME)/.codex
-PAIVOT_SKILLS := anchor architect architect_challenger ba_challenger business_analyst c4 designer designer_challenger developer intake nd orchestrator pm_acceptor retro sr_pm vault_capture vault_evolve vault_knowledge vault_settings vault_status vault_triage vlt
+PAIVOT_SKILLS := anchor architect architect_challenger ba_challenger business_analyst c4 designer designer_challenger developer intake nd orchestrator pm_acceptor pvg retro sr_pm vault_capture vault_evolve vault_knowledge vault_settings vault_status vault_triage vlt
 
 .PHONY: help
 help: ## Print this help

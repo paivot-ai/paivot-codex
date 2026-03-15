@@ -173,6 +173,7 @@ See `docs/GIT_WORKFLOW.md` for detailed procedures and the shared-vault model.
 
 | Skill | Purpose |
 |-------|---------|
+| `pvg` | Deterministic control plane for shared nd routing, queue selection, story transitions, merge gating, and recovery |
 | `nd` | Issue tracker (with resources: CLI ref, workflows, deps, epics, storage, patterns) |
 | `vlt` | Vault CLI (with references: command ref, agentic patterns, advanced techniques, architecture) |
 | `vault_knowledge` | Three-tier knowledge capture protocol |
