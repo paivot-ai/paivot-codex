@@ -131,6 +131,6 @@ codex "Use skill orchestrator. Use Paivot to build <description>."
 
 ```bash
 make install-global   # Now installs nd/vlt/vault_knowledge skills too
-make verify           # Replaces verify-delivery.sh with nd-aware checks
+make verify           # Runs pvg story verify-delivery with nd-aware checks
 make check-prereqs    # Verifies nd and vlt are installed
 ```

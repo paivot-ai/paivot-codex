@@ -39,7 +39,7 @@ Essential commands: `nd ready`, `nd create`, `nd show`, `nd update`, `nd close`,
 
 ## Storage
 
-Issues are markdown files in an nd vault. For Paivot execution, the live vault should be branch-independent: use `paivot-nd` or `nd --vault <shared-path>` so every worktree sees the same mutable backlog. The files still use the same markdown/frontmatter format and can be inspected directly.
+Issues are markdown files in an nd vault. For Paivot execution, the live vault should be branch-independent: use `pvg nd` or `nd --vault <shared-path>` so every worktree sees the same mutable backlog. The files still use the same markdown/frontmatter format and can be inspected directly.
 
 For the full storage format specification, see [STORAGE.md](resources/STORAGE.md).
 

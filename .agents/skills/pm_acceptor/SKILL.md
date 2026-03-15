@@ -35,12 +35,12 @@ If the story has `hard-tdd`, adjust review based on the dispatcher prompt phase:
 
 ## Workflow: Verification Ladder (review in this order -- cheapest first)
 
-Use `paivot-nd` (or `nd --vault "$PAIVOT_ND_VAULT"` when that env var is provided) for all live tracker operations so PM review is acting on the shared backlog, not a branch-local copy.
+Use `pvg nd` (or `nd --vault "$PAIVOT_ND_VAULT"` when that env var is provided) for all live tracker operations so PM review is acting on the shared backlog, not a branch-local copy.
 
 ### Phase 0: Load The Story
 
 ```bash
-paivot-nd show <story-id>
+pvg nd show <story-id>
 ```
 
 Verify the story is in "delivered" state:
@@ -107,12 +107,12 @@ unrelated issues, determine which bug reporting model applies (see Reporting Bug
 When all tiers pass:
 
 ```bash
-paivot-nd labels rm <story-id> delivered
+pvg nd labels rm <story-id> delivered
 
 # Step 1: Add accepted label (MUST come first -- this is a structural gate)
-paivot-nd labels add <story-id> accepted
+pvg nd labels add <story-id> accepted
 
-paivot-nd update <story-id> --append-notes "## PM Decision
+pvg nd update <story-id> --append-notes "## PM Decision
 ACCEPTED [$(date +%Y-%m-%d)]: Evidence reviewed and meets bar.
 
 ## nd_contract
@@ -125,7 +125,7 @@ status: accepted
 - [x] AC-by-AC verified from evidence"
 
 # Step 2: Close with reason and chain to next story
-paivot-nd close <story-id> --reason="Accepted: <brief summary>" --start=<next-id>
+pvg nd close <story-id> --reason="Accepted: <brief summary>" --start=<next-id>
 ```
 
 The `accepted` label is part of the merge gate. Story branches cannot be merged until the story is both labeled `accepted` and `closed`.
@@ -137,13 +137,13 @@ After accepting a story, check whether ALL siblings in the parent epic are now c
 
 ```bash
 # Get the parent epic
-PARENT=$(paivot-nd show <story-id> --json | jq -r '.parent')
+PARENT=$(pvg nd show <story-id> --json | jq -r '.parent')
 
 # If story has a parent, check if all children are closed
 if [ -n "$PARENT" ] && [ "$PARENT" != "null" ]; then
-  OPEN=$(paivot-nd children $PARENT --json | jq '[.[] | select(.status != "closed")] | length')
+  OPEN=$(pvg nd children $PARENT --json | jq '[.[] | select(.status != "closed")] | length')
   if [ "$OPEN" -eq 0 ]; then
-    paivot-nd close $PARENT --reason="All stories accepted"
+    pvg nd close $PARENT --reason="All stories accepted"
   fi
 fi
 ```
@@ -160,11 +160,11 @@ Rejection notes MUST be explicit and actionable with four parts:
 - `FIX`: what must change
 
 ```bash
-paivot-nd update <story-id> --status=open
-paivot-nd labels rm <story-id> delivered
-paivot-nd labels add <story-id> rejected
+pvg nd update <story-id> --status=open
+pvg nd labels rm <story-id> delivered
+pvg nd labels add <story-id> rejected
 
-paivot-nd update <story-id> --append-notes "## PM Decision
+pvg nd update <story-id> --append-notes "## PM Decision
 REJECTED [$(date +%Y-%m-%d)]:
 EXPECTED: ...
 DELIVERED: ...

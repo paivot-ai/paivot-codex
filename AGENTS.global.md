@@ -36,7 +36,7 @@ status: <new|in_progress|delivered|accepted|rejected>
 When multiple agents work in separate branches or worktrees, the mutable nd backlog must live outside those branch checkouts.
 
 - Resolve the live nd vault from the repository's git common dir
-- Use the `paivot-nd` wrapper (or equivalent `nd --vault <shared-path>`) for all live tracker operations
+- Use `pvg nd ...` (or equivalent `nd --vault <shared-path>`) for all live tracker operations
 - Treat git snapshots/archives as export artifacts, not the live queue
 
 ## Role Semantics
@@ -103,7 +103,7 @@ Light stacks (Python, TS/JS): max 4 dev + 2 PM + 6 total.
 ## Delivery Proof Preflight
 
 ```bash
-scripts/verify-delivery.sh <story-id>
+pvg story verify-delivery <story-id>
 ```
 
 Checks presence/shape of delivery evidence in nd notes/labels; does not validate code.

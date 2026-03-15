@@ -20,7 +20,7 @@ Optional:
 
 ## Workflow
 
-Use `paivot-nd` (or `nd --vault "$PAIVOT_ND_VAULT"` when that env var is provided) for live tracker operations. The live backlog must stay branch-independent across all worktrees.
+Use `pvg nd` (or `nd --vault "$PAIVOT_ND_VAULT"` when that env var is provided) for live tracker operations. The live backlog must stay branch-independent across all worktrees.
 
 ### 0) Git Workflow (Trunk-Based Development)
 
@@ -68,14 +68,14 @@ Use any relevant patterns, decisions, or debug insights found.
 Write a precise block note and stop.
 
 ```bash
-paivot-nd update <story-id> --status=blocked --append-notes "BLOCKED: Missing <specific context>. Cannot proceed without <specific decision/input>."
+pvg nd update <story-id> --status=blocked --append-notes "BLOCKED: Missing <specific context>. Cannot proceed without <specific decision/input>."
 ```
 
 ### 4) Claim The Story
 
 ```bash
-paivot-nd update <story-id> --status=in_progress
-paivot-nd update <story-id> --append-notes "## nd_contract
+pvg nd update <story-id> --status=in_progress
+pvg nd update <story-id> --append-notes "## nd_contract
 status: in_progress
 
 ### evidence
@@ -168,10 +168,10 @@ Record commit SHA and branch in evidence.
 3. Update `nd_contract.status: delivered`.
 
 ```bash
-paivot-nd labels add <story-id> delivered
-paivot-nd labels rm <story-id> rejected 2>/dev/null || true
+pvg nd labels add <story-id> delivered
+pvg nd labels rm <story-id> rejected 2>/dev/null || true
 
-paivot-nd update <story-id> --append-notes "## Implementation Evidence (DELIVERED)
+pvg nd update <story-id> --append-notes "## Implementation Evidence (DELIVERED)
 
 ### CI/Test Results
 - Commands run:

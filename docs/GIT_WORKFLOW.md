@@ -44,11 +44,11 @@ git rebase origin/main
 git push -u origin story/STORY_ID
 ```
 
-Update nd with delivery evidence through the shared wrapper:
+Update nd with delivery evidence through `pvg`:
 
 ```bash
-scripts/paivot-nd.sh update <story-id> --append-notes "Branch: story/<story-id>, SHA: $(git rev-parse HEAD)"
-scripts/paivot-nd.sh labels add <story-id> delivered
+pvg nd update <story-id> --append-notes "Branch: story/<story-id>, SHA: $(git rev-parse HEAD)"
+pvg nd labels add <story-id> delivered
 ```
 
 ## PM Review Gate
@@ -58,7 +58,7 @@ PM-Acceptor reviews delivered work from nd evidence.
 ### Accept
 
 ```bash
-scripts/story-transition.sh accept <story-id> --reason "Accepted: <summary>" --next <next-id>
+pvg story accept <story-id> --reason "Accepted: <summary>" --next <next-id>
 ```
 
 Merge eligibility requires both:
@@ -68,7 +68,7 @@ Merge eligibility requires both:
 ### Reject
 
 ```bash
-scripts/story-transition.sh reject <story-id> --feedback "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."
+pvg story reject <story-id> --feedback "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."
 ```
 
 Rejected work returns to the developer on the same story branch.
@@ -78,7 +78,7 @@ Rejected work returns to the developer on the same story branch.
 After PM acceptance:
 
 ```bash
-scripts/merge-story.sh STORY_ID
+pvg story merge STORY_ID
 ```
 
 If a merge conflict occurs, spawn a developer to resolve it. Conflict resolution is implementation work.
@@ -90,8 +90,8 @@ Live nd state is branch-independent and must not live inside a story branch chec
 Why this matters: if mutable issue files live in each branch checkout, different agents can produce divergent tracker histories for the same story. The live queue stops being canonical the moment two branches update it independently.
 
 Rules:
-- Use `scripts/paivot-nd.sh` or the installed `paivot-nd` wrapper for all tracker operations
-- The wrapper resolves the shared vault under the repo's git common dir, so all worktrees see the same live backlog
+- Use `pvg nd ...` for all tracker operations
+- `pvg nd` resolves the shared vault under the repo's git common dir, so all worktrees see the same live backlog
 - Branch-local `.vault/issues/` is not the live source of record
 - If you want a git artifact for backup or audit, create an explicit snapshot/export from the shared vault
 - Developers still never use `git add .` or `git add -A`
@@ -115,7 +115,7 @@ The orchestrator must:
 - merge accepted story branches to `main`
 - clean up merged story branches
 - spawn developers for merge conflicts instead of resolving them directly
-- use the shared nd wrapper so state stays canonical across worktrees
+- use `pvg nd` so state stays canonical across worktrees
 
 The orchestrator must not:
 - write implementation code
@@ -138,5 +138,5 @@ Use the smallest escape hatch that solves the problem:
 
 - `pvg loop cancel` stops unattended execution without deleting backlog or vault data.
 - `pvg loop recover` is the only safe way to resume after compaction, crash, or orphaned worktrees.
-- `scripts/paivot-nd.sh stats` lets you inspect the shared live backlog instead of a branch-local copy.
-- `scripts/merge-story.sh <story-id>` is the only supported merge path for accepted work; do not hand-merge story branches from stale local state.
+- `pvg nd stats` lets you inspect the shared live backlog instead of a branch-local copy.
+- `pvg story merge <story-id>` is the only supported merge path for accepted work; do not hand-merge story branches from stale local state.

@@ -81,8 +81,8 @@ Paivot is designed to involve the user at specific control points, not as a stan
 
 For multi-agent work on multiple branches, the live nd backlog must be branch-independent.
 
-- Use `paivot-nd` (installed under `~/.codex/tools/paivot/paivot-nd`) or `scripts/paivot-nd.sh`
-- The wrapper resolves the live vault from `git rev-parse --git-common-dir` and stores it under the repo's shared git directory
+- Use `pvg nd ...` for all live tracker operations
+- `pvg nd` resolves the live vault from `git rev-parse --git-common-dir` and routes every nd command to the repo's shared git directory state
 - Do not use branch-local `.vault/issues/` as the live tracker
 - If you need a git artifact, snapshot the live vault explicitly (`nd archive`) instead of treating mutable branch checkouts as canonical
 
