@@ -31,6 +31,14 @@ status: <new|in_progress|delivered|accepted|rejected>
 | `accepted` | `closed` | `accepted` |
 | `rejected` | `open` | `rejected` |
 
+## Live Source Of Record
+
+When multiple agents work in separate branches or worktrees, the mutable nd backlog must live outside those branch checkouts.
+
+- Resolve the live nd vault from the repository's git common dir
+- Use the `paivot-nd` wrapper (or equivalent `nd --vault <shared-path>`) for all live tracker operations
+- Treat git snapshots/archives as export artifacts, not the live queue
+
 ## Role Semantics
 
 - `developer`: reads nd story, implements exactly the AC, writes evidence + proof, sets `delivered`. Does NOT close.

@@ -95,12 +95,21 @@ agent_id = spawn_agent(prompt="Use skill developer. story_id=PROJ-a1b2. ...")
 # Wait for agent to complete
 result = wait(agent_id)
 
-# Resume an agent with additional context (e.g., user answers)
-resume_agent(agent_id, prompt="User answers to your questions: ...")
+# Send additional context to an active agent (e.g., user answers)
+send_input(agent_id, message="User answers to your questions: ...")
+
+# Re-open a previously closed agent only when needed
+resume_agent(agent_id)
 
 # Close an agent when done
 close_agent(agent_id)
 ```
+
+Current Codex behavior to account for:
+
+- Repo-local `AGENTS.md` files are layered with global instructions.
+- Subagents inherit the parent session's approval and sandbox policy.
+- Branches/worktrees must be created explicitly when the workflow depends on them; do not assume Codex selected the right checkout for you.
 
 ## Concurrency Limits
 
@@ -188,7 +197,7 @@ questions. Do not produce the document until you have received answers.""")
     # Normal relay loop: relay questions until document is produced
     while "QUESTIONS_FOR_USER:" in result:
         user_answers = ask_user(extract_questions(result))
-        resume_agent(agent_id, prompt=f"User answers: {user_answers}")
+        send_input(agent_id, message=f"User answers: {user_answers}")
         result = wait(agent_id)
 
     close_agent(agent_id)
@@ -380,7 +389,7 @@ Create properly structured bugs for these discovered issues:
         continue  # Re-evaluate priorities after new bugs created
 
     # 1. Check for delivered stories awaiting review
-    delivered = shell("nd list --status in_progress --label delivered --json")
+    delivered = shell("paivot-nd list --status in_progress --label delivered --json")
     if delivered:
         # Spawn PM-Acceptor (respect concurrency limits)
         # NOTE: PM-Acceptor closes the story itself on acceptance. Do NOT re-close.
@@ -393,7 +402,7 @@ Create properly structured bugs for these discovered issues:
         continue
 
     # 2. Check for rejected stories
-    rejected = shell("nd list --status in_progress --label rejected --json")
+    rejected = shell("paivot-nd list --status open --label rejected --json")
     if rejected:
         dev_id = spawn_agent(prompt=f"Use skill developer. story_id={story_id}. Rework.")
         dev_result = wait(dev_id)
@@ -404,13 +413,13 @@ Create properly structured bugs for these discovered issues:
         continue
 
     # 3. Pick ready work from entire backlog (highest priority first)
-    ready = shell("nd ready --sort priority --json")
+    ready = shell("paivot-nd ready --sort priority --json")
     if not ready:
         break  # Entire backlog complete or all remaining work blocked
     # Pick highest-priority item. Empty result is the ONLY signal that work is done.
 
     # Check for hard-tdd label -- opt-in only, NOT the default
-    story_json = shell(f"nd show {story_id} --json")
+    story_json = shell(f"paivot-nd show {story_id} --json")
     if "hard-tdd" in story_json:
         # Two-phase flow (see Hard-TDD Orchestration section below)
         run_hard_tdd(story_id)
@@ -435,20 +444,20 @@ by inspecting nd state directly:
 ```python
 # Recovery after context loss
 # 1. Find stories stuck in progress (stale agents)
-stale = shell("nd list --status in_progress --json")
+stale = shell("paivot-nd list --status in_progress --json")
 
 # 2. Check for delivered stories awaiting review
-delivered = shell("nd list --status in_progress --label delivered --json")
+delivered = shell("paivot-nd list --status in_progress --label delivered --json")
 
 # 3. Check for rejected stories needing rework
-rejected = shell("nd list --status open --label rejected --json")
+rejected = shell("paivot-nd list --status open --label rejected --json")
 
 # 4. Resume the execution loop from the top -- nd state is the source of truth
 ```
 
 **Before expected context loss**, note the current agent assignments in nd:
 ```python
-shell("nd update <story-id> --append-notes 'Agent state: developer active, commit <sha>'")
+shell("paivot-nd update <story-id> --append-notes 'Agent state: developer active, commit <sha>'")
 ```
 
 Recovery always works because nd state is persistent and authoritative.
@@ -465,7 +474,7 @@ When an agent output contains `QUESTIONS_FOR_USER:`, the orchestrator:
 if "QUESTIONS_FOR_USER:" in agent_result:
     questions = extract_between(agent_result, "QUESTIONS_FOR_USER:", "END_QUESTIONS")
     user_answers = ask_user(questions)
-    resume_agent(agent_id, prompt=f"User answers:\n{user_answers}")
+    send_input(agent_id, message=f"User answers:\n{user_answers}")
     agent_result = wait(agent_id)
 ```
 
@@ -539,14 +548,14 @@ the error.
 ## Required nd Operations
 
 ```bash
-nd prime           # Full project context
-nd ready           # Unblocked work (supports same filters as nd list)
-nd ready --priority 0 --json       # P0 bugs first
-nd ready --parent <epic-id> --json # Ready work scoped to an epic
-nd list --status in_progress --label delivered --json  # Delivered stories
-nd list --status open --label rejected --json          # Rejected stories
-nd show <id>       # Full story context
-nd stats           # Backlog statistics
+paivot-nd prime           # Full project context
+paivot-nd ready           # Unblocked work (supports same filters as nd list)
+paivot-nd ready --priority 0 --json       # P0 bugs first
+paivot-nd ready --parent <epic-id> --json # Ready work scoped to an epic
+paivot-nd list --status in_progress --label delivered --json  # Delivered stories
+paivot-nd list --status open --label rejected --json          # Rejected stories
+paivot-nd show <id>       # Full story context
+paivot-nd stats           # Backlog statistics
 ```
 
 **nd filter cheat sheet** (prevents wasted queries with wrong flags):

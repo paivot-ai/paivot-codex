@@ -44,11 +44,11 @@ git rebase origin/main
 git push -u origin story/STORY_ID
 ```
 
-Update nd with delivery evidence:
+Update nd with delivery evidence through the shared wrapper:
 
 ```bash
-nd update <story-id> --append-notes "Branch: story/<story-id>, SHA: $(git rev-parse HEAD)"
-nd labels add <story-id> delivered
+scripts/paivot-nd.sh update <story-id> --append-notes "Branch: story/<story-id>, SHA: $(git rev-parse HEAD)"
+scripts/paivot-nd.sh labels add <story-id> delivered
 ```
 
 ## PM Review Gate
@@ -58,8 +58,7 @@ PM-Acceptor reviews delivered work from nd evidence.
 ### Accept
 
 ```bash
-nd labels add <story-id> accepted
-nd close <story-id> --reason="Accepted: <summary>" --start=<next-id>
+scripts/story-transition.sh accept <story-id> --reason "Accepted: <summary>" --next <next-id>
 ```
 
 Merge eligibility requires both:
@@ -69,10 +68,7 @@ Merge eligibility requires both:
 ### Reject
 
 ```bash
-nd update <story-id> --status=open
-nd labels rm <story-id> delivered
-nd labels add <story-id> rejected
-nd comments add <story-id> "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."
+scripts/story-transition.sh reject <story-id> --feedback "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."
 ```
 
 Rejected work returns to the developer on the same story branch.
@@ -82,26 +78,24 @@ Rejected work returns to the developer on the same story branch.
 After PM acceptance:
 
 ```bash
-git fetch origin
-git checkout main
-git pull origin main
-git merge --no-ff origin/story/STORY_ID -m "merge(story/STORY_ID): integrate STORY_ID"
-git push origin main
-git push origin --delete story/STORY_ID
+scripts/merge-story.sh STORY_ID
 ```
 
 If a merge conflict occurs, spawn a developer to resolve it. Conflict resolution is implementation work.
 
-## nd State Isolation
+## nd Live State
 
-nd issue files (`.vault/issues/`) are runtime state and must never be committed.
+Live nd state is branch-independent and must not live inside a story branch checkout.
 
-Why this matters: if `.vault/issues/` is tracked, branch switches and merges can overwrite nd state changes and silently corrupt workflow state.
+Why this matters: if mutable issue files live in each branch checkout, different agents can produce divergent tracker histories for the same story. The live queue stops being canonical the moment two branches update it independently.
 
 Rules:
-- `.vault/issues/`, `.vault/.nd.yaml`, `.vault/.piv-loop-state.json`, `.vault/.dispatcher-state.json` stay gitignored
-- Developers never use `git add .` or `git add -A`
-- Developers never commit `.vault/` files
+- Use `scripts/paivot-nd.sh` or the installed `paivot-nd` wrapper for all tracker operations
+- The wrapper resolves the shared vault under the repo's git common dir, so all worktrees see the same live backlog
+- Branch-local `.vault/issues/` is not the live source of record
+- If you want a git artifact for backup or audit, create an explicit snapshot/export from the shared vault
+- Developers still never use `git add .` or `git add -A`
+- Developers still never commit `.vault/` runtime files
 
 ## Parallel Work
 
@@ -121,6 +115,7 @@ The orchestrator must:
 - merge accepted story branches to `main`
 - clean up merged story branches
 - spawn developers for merge conflicts instead of resolving them directly
+- use the shared nd wrapper so state stays canonical across worktrees
 
 The orchestrator must not:
 - write implementation code
@@ -136,3 +131,12 @@ pvg loop recover
 ```
 
 This removes orphaned worktrees and returns in-progress stories to a recoverable state while preserving delivered work for PM review.
+
+## If Something Goes Wrong
+
+Use the smallest escape hatch that solves the problem:
+
+- `pvg loop cancel` stops unattended execution without deleting backlog or vault data.
+- `pvg loop recover` is the only safe way to resume after compaction, crash, or orphaned worktrees.
+- `scripts/paivot-nd.sh stats` lets you inspect the shared live backlog instead of a branch-local copy.
+- `scripts/merge-story.sh <story-id>` is the only supported merge path for accepted work; do not hand-merge story branches from stale local state.

@@ -15,6 +15,10 @@ if [ $# -lt 1 ]; then
 fi
 
 STORY_ID="$1"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ND_CMD="${SCRIPT_DIR}/paivot-nd.sh"
+VAULT="$("${SCRIPT_DIR}/resolve-nd-vault.sh" --ensure)"
+STORY_FILE="${VAULT}/issues/${STORY_ID}.md"
 
 # Verify nd is available
 if ! command -v nd >/dev/null 2>&1; then
@@ -23,7 +27,7 @@ if ! command -v nd >/dev/null 2>&1; then
 fi
 
 # Get story content
-STORY_OUTPUT=$(nd show "$STORY_ID" 2>&1) || {
+STORY_OUTPUT=$("${ND_CMD}" show "$STORY_ID" 2>&1) || {
     echo "[FAIL] nd show $STORY_ID failed: $STORY_OUTPUT"
     exit 2
 }
@@ -48,24 +52,66 @@ check() {
 echo "Verifying delivery proof for $STORY_ID"
 echo "---"
 
-# Check for delivered label
-if nd show "$STORY_ID" 2>/dev/null | grep -q "delivered"; then
-    echo "[OK]   label:delivered"
+# Check for delivered label from structured JSON, not a plain-text grep
+if python3 - "$STORY_ID" "$ND_CMD" <<'PY'
+import json
+import subprocess
+import sys
+
+story_id = sys.argv[1]
+nd_cmd = sys.argv[2]
+out = subprocess.check_output([nd_cmd, "show", story_id, "--json"], text=True)
+story = json.loads(out)
+labels = set(story.get("labels") or [])
+if "delivered" not in labels:
+    print("[FAIL] label:delivered -- missing 'delivered' label")
+    raise SystemExit(1)
+print("[OK]   label:delivered")
+PY
+then
     PASS=$((PASS + 1))
 else
-    echo "[FAIL] label:delivered -- missing 'delivered' label"
     FAIL=$((FAIL + 1))
+fi
+
+# Check last nd_contract block directly from the file so we verify the
+# authoritative EOF contract, not just a stale earlier block.
+if python3 - "$STORY_FILE" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+story_file = Path(sys.argv[1])
+text = story_file.read_text()
+matches = list(re.finditer(r"^## nd_contract\n(?P<body>.*?)(?=^## |\Z)", text, re.M | re.S))
+
+if not matches:
+    print("[FAIL] nd_contract:last_block -- no nd_contract block found")
+    sys.exit(1)
+
+last = matches[-1]
+body = last.group("body")
+status = re.search(r"^status:\s*(\w+)", body, re.M)
+if not status or status.group(1) != "delivered":
+    print("[FAIL] nd_contract:last_block -- authoritative contract is not delivered")
+    sys.exit(1)
+
+if text.rstrip() != text[: last.end()].rstrip():
+    print("[FAIL] nd_contract:eof -- authoritative contract is not at EOF")
+    sys.exit(1)
+
+print("[OK]   nd_contract:last_block")
+print("[OK]   nd_contract:eof")
+PY
+    PASS=$((PASS + 2))
+else
+    FAIL=$((FAIL + 2))
 fi
 
 # Check for implementation evidence section
 check "notes:implementation_evidence" \
     "## Implementation Evidence" \
     "missing '## Implementation Evidence' heading"
-
-# Check for nd_contract with delivered status
-check "nd_contract:status_delivered" \
-    "status: delivered" \
-    "missing 'status: delivered' in nd_contract"
 
 # Check for CI/test results
 check "notes:ci_test_results" \

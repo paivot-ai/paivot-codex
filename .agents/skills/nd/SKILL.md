@@ -35,11 +35,11 @@ Essential commands: `nd ready`, `nd create`, `nd show`, `nd update`, `nd close`,
 3. `nd start <id>` -- Claim work (alias for `nd update <id> --status=in_progress`)
 4. Work. Add notes as you go: `nd update <id> --append-notes "..."`
 5. `nd close <id> --reason="..."` -- Complete task (auto-unblocks dependents)
-6. `git push` -- Sync to remote (issues are files in git)
+6. Optional: `nd archive` or an explicit export if you want a git snapshot of the live backlog
 
 ## Storage
 
-Issues are markdown files in `.vault/issues/`. Each file has YAML frontmatter (id, status, priority, type, deps, follows/led_to) and markdown body (Description, Acceptance Criteria, Design, Notes, History, Links, Comments). You can `cat`, `grep`, and `git diff` them directly.
+Issues are markdown files in an nd vault. For Paivot execution, the live vault should be branch-independent: use `paivot-nd` or `nd --vault <shared-path>` so every worktree sees the same mutable backlog. The files still use the same markdown/frontmatter format and can be inspected directly.
 
 For the full storage format specification, see [STORAGE.md](resources/STORAGE.md).
 

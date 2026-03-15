@@ -46,7 +46,7 @@ vlt vault="Claude" search query=""   # Test connectivity
 
 - **spawn_agent orchestration**: The orchestrator skill uses `spawn_agent`/`wait`/`resume_agent`/`close_agent` for automated multi-agent workflows.
 - **Vault-backed knowledge**: All agents read from and write to the Obsidian vault for cross-session learning.
-- **nd issue tracking**: Stories are tracked in nd (not bd, not git branches). Issues are plain markdown files with YAML frontmatter.
+- **nd issue tracking**: Stories are tracked in nd (not bd, not git branches). Live execution state uses a branch-independent nd vault, not `.vault/issues/` inside each story branch checkout.
 - **Trunk-based branching**: `main` plus `story/<id>` branches. PM review gates story merges; no shared sync branches.
 
 ## The nd Contract (Status + Evidence + Proof)
@@ -66,6 +66,36 @@ status: <new|in_progress|delivered|accepted|rejected>
 
 If multiple `nd_contract` blocks exist, the last one is authoritative.
 
+## Autonomy Contract
+
+Paivot is designed to involve the user at specific control points, not as a standing reviewer queue.
+
+- **During D&F**: BLT roles can surface structured questions to the user through the orchestrator.
+- **After backlog approval**: execution is autonomous. The normal loop is `developer -> pm_acceptor -> continue`.
+- **PM acceptance is internal**: PM-Acceptor review is part of the unattended runtime, not a user sign-off step.
+- **Milestone steering is external**: the user re-enters for milestone review, prioritization shifts, and explicit steering.
+- **Break-glass is exceptional**: escalate to the user only for true blockers, `cant_fix`, policy/safety conflicts, or requested manual intervention.
+- **Never ask the user to clear delivered queues** or perform routine PM acceptance for normal story flow.
+
+## Live Source Of Record
+
+For multi-agent work on multiple branches, the live nd backlog must be branch-independent.
+
+- Use `paivot-nd` (installed under `~/.codex/tools/paivot/paivot-nd`) or `scripts/paivot-nd.sh`
+- The wrapper resolves the live vault from `git rev-parse --git-common-dir` and stores it under the repo's shared git directory
+- Do not use branch-local `.vault/issues/` as the live tracker
+- If you need a git artifact, snapshot the live vault explicitly (`nd archive`) instead of treating mutable branch checkouts as canonical
+
+## Codex Agent Notes
+
+Recent Codex agent features make a few constraints more important:
+
+- Repo-local `AGENTS.md` files are layered with global instructions. Keep project-specific rules here and avoid assuming the global file is the only prompt source.
+- Subagents inherit the parent session's approval and sandbox defaults. Do not assume spawned agents can bypass permissions the parent does not have.
+- Use `send_input` to continue an active agent. Reserve `resume_agent` for agents that were previously closed.
+- If a story requires an isolated branch or worktree, create it explicitly before handing execution to a developer. Do not assume Codex created the right checkout implicitly.
+- Break-glass remains operator-controlled: `pvg loop cancel` stops unattended execution and `pvg loop recover` is the only safe recovery path after interruption or compaction.
+
 ## Role Semantics
 
 - `developer`: reads nd story, implements exactly the AC, writes evidence + proof, sets `delivered`
@@ -81,13 +111,14 @@ If multiple `nd_contract` blocks exist, the last one is authoritative.
 When Paivot is invoked ("use Paivot", "Paivot this"), the orchestrator enters **dispatcher mode**:
 
 - Spawns agents via `spawn_agent` -- does NOT do work directly
-- Relays questions from agents to the user
+- Relays D&F questions, milestone review prompts, and break-glass escalations to the user
 - Manages nd state transitions
 - Captures knowledge to vault
 
 The dispatcher NEVER writes code, D&F documents, or story files directly.
 It also NEVER resolves merge conflicts (spawn a developer -- conflict resolution requires code judgment)
 or edits source files for any reason, including "cleanup" or "git maintenance".
+It also MUST treat PM-Acceptor as an internal execution-stage agent rather than a user approval checkpoint.
 
 ### D&F Specialist Review
 
@@ -114,7 +145,7 @@ PM review gates: story branches merge only after PM-Acceptor has accepted the st
 Accepted means the story is both `closed` in nd and labeled `accepted`.
 There are no shared integration branches.
 
-See `docs/GIT_WORKFLOW.md` for detailed procedures.
+See `docs/GIT_WORKFLOW.md` for detailed procedures and the shared-vault model.
 
 ## Skills
 

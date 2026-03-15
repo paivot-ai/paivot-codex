@@ -58,6 +58,10 @@ install-global: check-prereqs ## Install Paivot skills + global AGENTS.md into C
 	  done; \
 	  \
 	  install -m 0644 "AGENTS.global.md" "$(CODEX_HOME)/AGENTS.md"; \
+	  install -m 0755 "scripts/resolve-nd-vault.sh" "$(PAIVOT_TOOLS_DIR)/resolve-nd-vault.sh"; \
+	  install -m 0755 "scripts/paivot-nd.sh" "$(PAIVOT_TOOLS_DIR)/paivot-nd"; \
+	  install -m 0755 "scripts/story-transition.sh" "$(PAIVOT_TOOLS_DIR)/story-transition.sh"; \
+	  install -m 0755 "scripts/merge-story.sh" "$(PAIVOT_TOOLS_DIR)/merge-story.sh"; \
 	  install -m 0755 "scripts/verify-delivery.sh" "$(PAIVOT_TOOLS_DIR)/verify-delivery.sh"; \
 	  install -m 0755 "scripts/notify-dispatcher.sh" "$(PAIVOT_TOOLS_DIR)/notify-dispatcher.sh"; \
 	  \
