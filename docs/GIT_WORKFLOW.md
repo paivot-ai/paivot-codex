@@ -48,7 +48,7 @@ Update nd with delivery evidence through `pvg`:
 
 ```bash
 pvg nd update <story-id> --append-notes "Branch: story/<story-id>, SHA: $(git rev-parse HEAD)"
-pvg nd labels add <story-id> delivered
+pvg story deliver <story-id>
 ```
 
 ## PM Review Gate

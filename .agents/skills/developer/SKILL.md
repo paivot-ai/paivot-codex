@@ -163,14 +163,12 @@ Record commit SHA and branch in evidence.
 
 ### 11) Deliver: Write Evidence + Proof Back Into The Story
 
-1. Add `delivered` label (and clear stale rejection labels).
-2. Append delivery notes with evidence and AC verification table.
-3. Update `nd_contract.status: delivered`.
+1. Append delivery notes with evidence and AC verification table.
+2. Run `pvg story deliver <story-id>`.
+3. `pvg story deliver` sets nd status to `in_progress`, clears stale rejection labels, adds
+   the `delivered` label, and appends the authoritative `nd_contract` block at EOF.
 
 ```bash
-pvg nd labels add <story-id> delivered
-pvg nd labels rm <story-id> rejected 2>/dev/null || true
-
 pvg nd update <story-id> --append-notes "## Implementation Evidence (DELIVERED)
 
 ### CI/Test Results
@@ -214,6 +212,8 @@ status: delivered
 ### proof
 - [x] AC #1: ...
 - [x] AC #2: ..."
+
+pvg story deliver <story-id>
 ```
 
 ### 12) Capture Knowledge to Vault (If Applicable)

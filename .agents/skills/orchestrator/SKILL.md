@@ -24,7 +24,7 @@ Provide one of:
 - `epic_id` (optional): nd epic to drive to completion
 - `story_id` (optional): nd story to advance
 - `mode` (optional): `dispatcher` to enter full dispatcher mode for a project
-- If none provided: orchestrate by selecting the next ready story from nd
+- If none provided: orchestrate by asking `pvg loop next --json` what should happen next
 
 ## Dispatcher Mode
 
@@ -35,7 +35,7 @@ In dispatcher mode you are a coordinator, NOT a producer. You:
 - Spawn agents via `spawn_agent` and manage their lifecycle
 - Relay QUESTIONS_FOR_USER blocks from agents to the user
 - Summarize agent outputs
-- Manage the nd backlog (status transitions, priority)
+- Manage the nd backlog through `pvg loop next` and `pvg story` transitions
 - Capture knowledge to the vault
 
 You NEVER:
@@ -388,48 +388,41 @@ Create properly structured bugs for these discovered issues:
         pending_bug_reports = None
         continue  # Re-evaluate priorities after new bugs created
 
-    # 1. Check for delivered stories awaiting review
-    delivered = shell("pvg nd list --status in_progress --label delivered --json")
-    if delivered:
-        # Spawn PM-Acceptor (respect concurrency limits)
-        # NOTE: PM-Acceptor closes the story itself on acceptance. Do NOT re-close.
+    step = shell("pvg loop next --json")
+
+    if step.decision == "complete":
+        break
+    if step.decision == "blocked":
+        break
+    if step.decision == "wait":
+        wait_for_existing_agents()
+        continue
+    if step.decision != "act":
+        escalate_to_user(step.reason)
+        break
+
+    story_id = step.next.story_id
+
+    if step.next.role == "pm_acceptor":
+        # NOTE: PM-Acceptor closes the story itself on acceptance via pvg story accept.
         pm_id = spawn_agent(prompt=f"Use skill pm_acceptor. story_id={story_id}.")
         pm_result = wait(pm_id)
         close_agent(pm_id)
-        # Scan pm_result for DISCOVERED_BUG blocks
         if "DISCOVERED_BUG:" in pm_result:
             pending_bug_reports = extract_bug_reports(pm_result)
         continue
 
-    # 2. Check for rejected stories
-    rejected = shell("pvg nd list --status open --label rejected --json")
-    if rejected:
-        dev_id = spawn_agent(prompt=f"Use skill developer. story_id={story_id}. Rework.")
-        dev_result = wait(dev_id)
-        close_agent(dev_id)
-        # Scan dev_result for DISCOVERED_BUG blocks
-        if "DISCOVERED_BUG:" in dev_result:
-            pending_bug_reports = extract_bug_reports(dev_result)
-        continue
-
-    # 3. Pick ready work from entire backlog (highest priority first)
-    ready = shell("pvg nd ready --sort priority --json")
-    if not ready:
-        break  # Entire backlog complete or all remaining work blocked
-    # Pick highest-priority item. Empty result is the ONLY signal that work is done.
-
-    # Check for hard-tdd label -- opt-in only, NOT the default
-    story_json = shell(f"pvg nd show {story_id} --json")
-    if "hard-tdd" in story_json:
-        # Two-phase flow (see Hard-TDD Orchestration section below)
+    if step.next.hard_tdd and step.next.phase == "red":
         run_hard_tdd(story_id)
         continue
 
-    # Normal mode (DEFAULT): one developer writes both code and tests
-    dev_id = spawn_agent(prompt=f"Use skill developer. story_id={story_id}.")
+    prompt_suffix = ""
+    if step.next.queue == "rejected":
+        prompt_suffix = " Rework."
+
+    dev_id = spawn_agent(prompt=f"Use skill developer. story_id={story_id}.{prompt_suffix}")
     dev_result = wait(dev_id)
     close_agent(dev_id)
-    # Scan dev_result for DISCOVERED_BUG blocks
     if "DISCOVERED_BUG:" in dev_result:
         pending_bug_reports = extract_bug_reports(dev_result)
 ```
@@ -446,11 +439,8 @@ by inspecting nd state directly:
 # 1. Find stories stuck in progress (stale agents)
 stale = shell("pvg nd list --status in_progress --json")
 
-# 2. Check for delivered stories awaiting review
-delivered = shell("pvg nd list --status in_progress --label delivered --json")
-
-# 3. Check for rejected stories needing rework
-rejected = shell("pvg nd list --status open --label rejected --json")
+# 2. Ask pvg what should happen next
+step = shell("pvg loop next --json")
 
 # 4. Resume the execution loop from the top -- nd state is the source of truth
 ```
@@ -541,9 +531,8 @@ git branch -D story/<story-id>
 **Always use `-D` (not `-d`):** the branch is merged to the local epic branch or main
 but not to `origin/main`, so `-d` will always fail with "not fully merged".
 
-**nd labels are idempotent-ish:** `nd labels add` fails if the label already exists.
-If the developer already set `delivered`, don't set it again. Check first or ignore
-the error.
+Use `pvg story deliver|accept|reject` for state transitions. The orchestrator should not
+replay label choreography itself after an agent already completed the transition.
 
 ## Required nd Operations
 
@@ -554,6 +543,7 @@ pvg nd ready --priority 0 --json       # P0 bugs first
 pvg nd ready --parent <epic-id> --json # Ready work scoped to an epic
 pvg nd list --status in_progress --label delivered --json  # Delivered stories
 pvg nd list --status open --label rejected --json          # Rejected stories
+pvg loop next --json   # Deterministic next action (delivered -> rejected -> ready)
 pvg nd show <id>       # Full story context
 pvg nd stats           # Backlog statistics
 ```

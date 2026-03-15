@@ -95,6 +95,8 @@ Recent Codex agent features make a few constraints more important:
 - Use `send_input` to continue an active agent. Reserve `resume_agent` for agents that were previously closed.
 - If a story requires an isolated branch or worktree, create it explicitly before handing execution to a developer. Do not assume Codex created the right checkout implicitly.
 - Break-glass remains operator-controlled: `pvg loop cancel` stops unattended execution and `pvg loop recover` is the only safe recovery path after interruption or compaction.
+- Use `pvg loop next --json` for queue selection instead of re-implementing delivered/rejected/ready ordering in prompts.
+- Use `pvg story deliver|accept|reject` for tracker transitions instead of hand-managing labels and status swaps.
 
 ## Role Semantics
 

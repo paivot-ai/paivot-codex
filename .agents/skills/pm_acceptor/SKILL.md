@@ -107,11 +107,6 @@ unrelated issues, determine which bug reporting model applies (see Reporting Bug
 When all tiers pass:
 
 ```bash
-pvg nd labels rm <story-id> delivered
-
-# Step 1: Add accepted label (MUST come first -- this is a structural gate)
-pvg nd labels add <story-id> accepted
-
 pvg nd update <story-id> --append-notes "## PM Decision
 ACCEPTED [$(date +%Y-%m-%d)]: Evidence reviewed and meets bar.
 
@@ -124,12 +119,12 @@ status: accepted
 ### proof
 - [x] AC-by-AC verified from evidence"
 
-# Step 2: Close with reason and chain to next story
-pvg nd close <story-id> --reason="Accepted: <brief summary>" --start=<next-id>
+pvg story accept <story-id> --reason "Accepted: <brief summary>" --next <next-id>
 ```
 
-The `accepted` label is part of the merge gate. Story branches cannot be merged until the story is both labeled `accepted` and `closed`.
-Both steps are mandatory and must be in this order.
+`pvg story accept` applies the `accepted` label, closes the story, and appends the
+authoritative accepted contract. Story branches cannot be merged until the story is both
+labeled `accepted` and `closed`.
 
 ### Epic Auto-Close (MANDATORY after every acceptance)
 
@@ -160,11 +155,7 @@ Rejection notes MUST be explicit and actionable with four parts:
 - `FIX`: what must change
 
 ```bash
-pvg nd update <story-id> --status=open
-pvg nd labels rm <story-id> delivered
-pvg nd labels add <story-id> rejected
-
-pvg nd update <story-id> --append-notes "## PM Decision
+pvg story reject <story-id> --feedback "## PM Decision
 REJECTED [$(date +%Y-%m-%d)]:
 EXPECTED: ...
 DELIVERED: ...

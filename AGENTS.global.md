@@ -48,6 +48,8 @@ When multiple agents work in separate branches or worktrees, the mutable nd back
 - `anchor`: adversarial reviewer (binary outcomes: APPROVED/REJECTED or VALIDATED/GAPS_FOUND).
 - `retro`: harvests learnings and writes vault knowledge notes with `actionable: pending`.
 - `orchestrator`: automated dispatcher using `spawn_agent`.
+- Queue selection should come from `pvg loop next --json`, not hand-rolled delivered/rejected/ready logic.
+- Story transitions should use `pvg story deliver|accept|reject`, not manual label choreography.
 
 ## Vault Knowledge Protocol
 
