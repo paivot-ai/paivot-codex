@@ -10,7 +10,7 @@ description: >
 
 # nd -- Persistent Issue Memory for AI Agents
 
-Vault-backed issue tracker that stores issues as plain markdown files with YAML frontmatter. Built on [vlt](https://github.com/RamXX/vlt) (Obsidian vault library). Issues survive compaction, sync via git, and have no size limits.
+Vault-backed issue tracker that stores issues as plain markdown files with YAML frontmatter. Built on [vlt](https://github.com/paivot-ai/vlt) (Obsidian vault library). Issues survive compaction, sync via git, and have no size limits.
 
 ## Prerequisites
 
@@ -19,7 +19,7 @@ nd --version  # Verify nd is installed and in PATH
 ```
 
 - **nd CLI** installed (`make install` from source)
-- The vault uses [vlt](https://github.com/RamXX/vlt) for all file operations. If you need deeper vault manipulation (frontmatter surgery, wikilinks, templates), consult the **vlt skill** for its full API.
+- The vault uses [vlt](https://github.com/paivot-ai/vlt) for all file operations. If you need deeper vault manipulation (frontmatter surgery, wikilinks, templates), consult the **vlt skill** for its full API.
 
 ## CLI Reference
 
@@ -124,5 +124,5 @@ codex "Use skill nd. Create a story for: <requirement>"
 ## Full Documentation
 
 - **nd prime**: AI-optimized workflow context
-- **GitHub**: [github.com/RamXX/nd](https://github.com/RamXX/nd)
-- **vlt** (underlying vault library): [github.com/RamXX/vlt](https://github.com/RamXX/vlt)
+- **GitHub**: [github.com/paivot-ai/nd](https://github.com/paivot-ai/nd)
+- **vlt** (underlying vault library): [github.com/paivot-ai/vlt](https://github.com/paivot-ai/vlt)

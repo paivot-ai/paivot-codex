@@ -20,8 +20,8 @@ The following tools must be in PATH:
 
 | Tool | Purpose | Install |
 |------|---------|---------|
-| `nd` | Issue tracker (vault-backed) | [github.com/RamXX/nd](https://github.com/RamXX/nd) |
-| `vlt` | Obsidian vault CLI | [github.com/RamXX/vlt](https://github.com/RamXX/vlt) |
+| `nd` | Issue tracker (vault-backed) | [github.com/paivot-ai/nd](https://github.com/paivot-ai/nd) |
+| `vlt` | Obsidian vault CLI | [github.com/paivot-ai/vlt](https://github.com/paivot-ai/vlt) |
 
 ### Codex Config Requirements
 

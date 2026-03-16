@@ -138,7 +138,7 @@ The `content_hash` field stores a SHA-256 hash of the body content (everything b
 
 ## File Operations
 
-nd uses [vlt](https://github.com/RamXX/vlt) for all file I/O:
+nd uses [vlt](https://github.com/paivot-ai/vlt) for all file I/O:
 - `v.Create()` for new issues
 - `v.Read(title, heading)` for reading (supports heading-scoped reads)
 - `v.Write()` for body replacement

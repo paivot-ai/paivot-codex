@@ -250,4 +250,4 @@ codex "Use skill vlt. Create a decision note about choosing WebSockets over SSE.
 
 ## Full Documentation
 
-- **GitHub**: [github.com/RamXX/vlt](https://github.com/RamXX/vlt)
+- **GitHub**: [github.com/paivot-ai/vlt](https://github.com/paivot-ai/vlt)

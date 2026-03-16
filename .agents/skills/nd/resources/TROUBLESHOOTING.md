@@ -107,4 +107,4 @@ nd reads all issue files for `list`, `ready`, `blocked`, and `stats` commands. F
 
 ## vlt Dependency
 
-nd requires [vlt](https://github.com/RamXX/vlt) as a Go library dependency. It is compiled into the nd binary -- no separate vlt installation is needed. However, if you want to perform advanced vault operations (wikilink management, template application, bookmark manipulation), install the vlt CLI separately and consult the **vlt skill**.
+nd requires [vlt](https://github.com/paivot-ai/vlt) as a Go library dependency. It is compiled into the nd binary -- no separate vlt installation is needed. However, if you want to perform advanced vault operations (wikilink management, template application, bookmark manipulation), install the vlt CLI separately and consult the **vlt skill**.

@@ -23,8 +23,8 @@ help: ## Print this help
 check-prereqs: ## Verify nd and vlt are installed
 	@echo "Checking prerequisites..."
 	@command -v pvg >/dev/null 2>&1 || { echo "ERROR: pvg is not installed. See https://github.com/paivot-ai/pvg"; exit 1; }
-	@command -v nd >/dev/null 2>&1 || { echo "ERROR: nd is not installed. See https://github.com/RamXX/nd"; exit 1; }
-	@command -v vlt >/dev/null 2>&1 || { echo "ERROR: vlt is not installed. See https://github.com/RamXX/vlt"; exit 1; }
+	@command -v nd >/dev/null 2>&1 || { echo "ERROR: nd is not installed. See https://github.com/paivot-ai/nd"; exit 1; }
+	@command -v vlt >/dev/null 2>&1 || { echo "ERROR: vlt is not installed. See https://github.com/paivot-ai/vlt"; exit 1; }
 	@pvg help 2>&1 | grep -q 'story <subcommand>' || { echo "ERROR: installed pvg is missing story workflow commands."; exit 1; }
 	@pvg help 2>&1 | grep -q 'loop setup' || { echo "ERROR: installed pvg is missing loop workflow commands."; exit 1; }
 	@echo "  pvg: $$(pvg version 2>/dev/null || echo 'installed')"
