@@ -50,6 +50,7 @@ When multiple agents work in separate branches or worktrees, the mutable nd back
 - `orchestrator`: automated dispatcher using `spawn_agent`.
 - Queue selection should come from `pvg loop next --json`, not hand-rolled delivered/rejected/ready logic.
 - Story transitions should use `pvg story deliver|accept|reject`, not manual label choreography.
+- For OpenAI API / ChatGPT / Codex questions, use the OpenAI Docs MCP server first when it is available.
 
 ## Vault Knowledge Protocol
 

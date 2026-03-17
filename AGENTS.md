@@ -23,14 +23,25 @@ The following tools must be in PATH:
 | `nd` | Issue tracker (vault-backed) | [github.com/paivot-ai/nd](https://github.com/paivot-ai/nd) |
 | `vlt` | Obsidian vault CLI | [github.com/paivot-ai/vlt](https://github.com/paivot-ai/vlt) |
 
-### Codex Config Requirements
+### Codex Project Config
 
-Ensure `~/.codex/config.toml` includes:
+This repo ships a project-scoped `.codex/config.toml` for current Codex releases.
 
-```toml
-[features]
-enable_spawn_agent = true
-enable_parallel_execution = true
+After you trust the project, Codex CLI and the Codex app will pick up:
+
+- `model = "gpt-5.4"` by default, with `review_model = "gpt-5.3-codex"` for `/review`
+- `approval_policy = "on-request"` and `sandbox_mode = "workspace-write"`
+- `model_reasoning_effort = "medium"` and `plan_mode_reasoning_effort = "high"`
+- repo-local `CLAUDE.md` fallback support, a larger project-doc byte budget, and repo-local custom agents
+- the OpenAI Docs MCP server at `https://developers.openai.com/mcp`
+- a `paivot_research` profile for live web research and a `paivot_review` profile for read-only review passes
+
+Quick checks from the repo root after trust:
+
+```bash
+codex --version
+codex mcp list
+codex -p paivot_research
 ```
 
 ### Vault Setup
@@ -45,6 +56,7 @@ vlt vault="Claude" search query=""   # Test connectivity
 ## Capabilities
 
 - **spawn_agent orchestration**: The orchestrator skill uses `spawn_agent`/`wait`/`resume_agent`/`close_agent` for automated multi-agent workflows.
+- **Current Codex surfaces**: repo-local config is shared by the CLI and Codex app, so review flows, worktrees, automations, image inputs, and MCP-backed docs lookup stay aligned.
 - **Vault-backed knowledge**: All agents read from and write to the Obsidian vault for cross-session learning.
 - **nd issue tracking**: Stories are tracked in nd (not bd, not git branches). Live execution state uses a branch-independent nd vault, not `.vault/issues/` inside each story branch checkout.
 - **Trunk-based branching**: `main` plus `story/<id>` branches. PM review gates story merges; no shared sync branches.
@@ -91,6 +103,7 @@ For multi-agent work on multiple branches, the live nd backlog must be branch-in
 Recent Codex agent features make a few constraints more important:
 
 - Repo-local `AGENTS.md` files are layered with global instructions. Keep project-specific rules here and avoid assuming the global file is the only prompt source.
+- If the task touches OpenAI APIs, ChatGPT apps, or Codex itself, use the `openaiDeveloperDocs` MCP server first when it is available.
 - Subagents inherit the parent session's approval and sandbox defaults. Do not assume spawned agents can bypass permissions the parent does not have.
 - Use `send_input` to continue an active agent. Reserve `resume_agent` for agents that were previously closed.
 - If a story requires an isolated branch or worktree, create it explicitly before handing execution to a developer. Do not assume Codex created the right checkout implicitly.

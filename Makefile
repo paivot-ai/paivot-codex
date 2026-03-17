@@ -22,11 +22,15 @@ help: ## Print this help
 .PHONY: check-prereqs
 check-prereqs: ## Verify nd and vlt are installed
 	@echo "Checking prerequisites..."
+	@command -v codex >/dev/null 2>&1 || { echo "ERROR: codex is not installed. See https://developers.openai.com/codex/quickstart"; exit 1; }
+	@codex mcp --help >/dev/null 2>&1 || { echo "ERROR: installed codex is missing MCP support."; exit 1; }
+	@codex features list 2>/dev/null | grep -q '^multi_agent' || { echo "ERROR: installed codex is too old for current Paivot multi-agent workflows."; exit 1; }
 	@command -v pvg >/dev/null 2>&1 || { echo "ERROR: pvg is not installed. See https://github.com/paivot-ai/pvg"; exit 1; }
 	@command -v nd >/dev/null 2>&1 || { echo "ERROR: nd is not installed. See https://github.com/paivot-ai/nd"; exit 1; }
 	@command -v vlt >/dev/null 2>&1 || { echo "ERROR: vlt is not installed. See https://github.com/paivot-ai/vlt"; exit 1; }
 	@pvg help 2>&1 | grep -q 'story <subcommand>' || { echo "ERROR: installed pvg is missing story workflow commands."; exit 1; }
 	@pvg help 2>&1 | grep -q 'loop setup' || { echo "ERROR: installed pvg is missing loop workflow commands."; exit 1; }
+	@echo "  codex: $$(codex --version 2>/dev/null || echo 'installed')"
 	@echo "  pvg: $$(pvg version 2>/dev/null || echo 'installed')"
 	@echo "  nd:  $$(nd --version 2>/dev/null || echo 'installed')"
 	@echo "  vlt: $$(vlt --version 2>/dev/null || echo 'installed')"
