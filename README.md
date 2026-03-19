@@ -173,6 +173,22 @@ Specialist challenger roles are available for D&F review:
 - `designer_challenger`
 - `architect_challenger`
 
+### Execution workflow
+
+The execution loop (orchestrator skill) drives stories through development, review, and delivery. Two structural gates enforce quality:
+
+**Story gate:** Every story must have passing integration tests with no mocks before the PM-Acceptor will accept it. Tests gated behind env vars or skipped tests are rejected on sight.
+
+**Epic gate:** After all stories in an epic are accepted and merged to the epic branch, three steps run before the epic reaches main:
+
+1. **E2e verification** -- the full test suite (unit + integration + e2e) runs on the merged epic branch. No epic is done without passing e2e tests.
+2. **Anchor milestone review** -- the Anchor agent validates real delivery: no mocks in integration tests, boundary maps satisfied, skills consulted.
+3. **Merge to main** -- depends on `workflow.solo_dev` setting:
+   - `true` (default): merge directly to main, push, delete epic and story branches
+   - `false`: create a PR for team review
+
+Configure with: `pvg settings workflow.solo_dev=false` for team workflows.
+
 ### Skills Included
 
 | Skill | Purpose |
@@ -326,7 +342,7 @@ make help
 make check-prereqs
 make install-global
 make verify STORY=PROJ-a1b2
-make bump v=1.38.5
+make bump v=1.43.1
 ```
 
 Current repo-local custom Codex surface:

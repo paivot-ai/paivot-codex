@@ -138,6 +138,25 @@ Do NOT rename, paraphrase, or "improve" these values. A single renamed column
 (e.g., `location_lat` instead of `center_lat`) causes Anchor rejection and cascading
 developer failures.
 
+### E2e Capstone Story (MANDATORY per epic)
+
+Every epic MUST include an **e2e capstone story** as its final story (blocked by
+all other stories in the epic). This story's sole purpose is to exercise the
+completed epic from the user's perspective -- no mocks, no stubs, real
+infrastructure, real data flows.
+
+The e2e capstone story must include:
+- **Title**: "E2e: <what the user can do after this epic>"
+- **ACs**: User-perspective scenarios (e.g., "User can register, log in, and see
+  their dashboard" -- not "auth module returns JWT")
+- **Testing requirements**: "E2e tests ONLY. No unit tests, no integration tests.
+  Tests must exercise the full system as a user would. No mocks of any kind."
+- **Dependencies**: blocked_by ALL other stories in the epic (it runs last)
+- **PRODUCES**: e2e test files (e.g., `test/e2e/epic_name_test.go`)
+
+Without this story, the Anchor will reject the backlog. Without passing e2e tests,
+the epic cannot merge to main.
+
 ### The hard-tdd Label
 
 Apply `hard-tdd` label to stories requiring two-phase TDD enforcement (Test Author writes
@@ -193,14 +212,18 @@ status: new
 - [ ] Pending implementation"
 ```
 
-### 4) Set Dependencies Explicitly
+### 4) E2e Capstone Story Last
+
+Add the e2e capstone story for each epic, blocked by all other stories in the epic.
+
+### 5) Set Dependencies Explicitly
 
 ```bash
 nd dep add <child-id> <epic-id> --type parent-child
 nd dep add <blocked-id> <blocking-id> --type blocks
 ```
 
-### 5) Label Stories Appropriately
+### 6) Label Stories Appropriately
 
 ```bash
 nd labels add <id> milestone-1
@@ -209,28 +232,76 @@ nd labels add <id> integration        # For wiring stories
 nd labels add <id> hard-tdd           # For Hard-TDD workflow
 ```
 
-### 6) Integration Audit (Mandatory)
+### 7) Integration Audit (Mandatory)
 
 Before declaring the backlog "ready", ensure integration points are covered:
 - each cross-component connection has a story
 - each external system interaction has integration test requirements
 
-### 7) Boundary Map Consistency Check (Mandatory)
+### 8) Boundary Map Consistency Check (Mandatory)
 
 Verify boundary map consistency: every CONSUMES reference must match a PRODUCES in an
 upstream story. Missing or mismatched interfaces will be caught by the Anchor and cause
 rejection.
 
-### 8) Pre-Anchor Self-Check (Mandatory)
+### 9) Pre-Anchor Self-Check (CRITICAL -- run BEFORE submitting to Anchor)
 
-Reject your own backlog before the Anchor does:
-- missing walking skeleton stories (end-to-end slice)
-- missing horizontal layers (auth, logging, error handling, observability)
-- missing "prove it works" tests (integration/e2e)
-- unclear ACs or missing test commands
-- boundary map inconsistencies (CONSUMES without matching PRODUCES)
+The Anchor is an adversarial reviewer. If it finds issues, that means I missed them.
+The Anchor finding gaps is a failure of my rigor, not a normal part of the process.
+I MUST catch these myself. Before submitting the backlog for Anchor review, I run
+every check the Anchor would run:
 
-### 9) Terminology Audit (Mandatory -- run after all stories are created)
+**Structural checks (run these nd commands):**
+```bash
+nd dep cycles                    # MUST return zero cycles
+nd epic close-eligible           # MUST report all epics as sound
+nd graph <epic-id>               # Visually inspect dependency DAG
+nd stale --days=14               # No neglected issues
+```
+
+**Story-by-story audit (check EVERY story):**
+
+1. **Walking skeleton present?** The first story in any epic must wire up the
+   end-to-end path (even with stubs). If the backlog starts with horizontal
+   layers (all models, then all routes, then all UI), it is WRONG. Restructure
+   into vertical slices.
+
+2. **Vertical slices, not horizontal layers?** Every story must deliver a
+   user-visible outcome. "Create database models" or "Set up API routes" are
+   horizontal layers. "User can register and see confirmation" is a vertical slice.
+
+3. **Boundary maps consistent?** For every story's CONSUMES section, verify the
+   referenced story's PRODUCES section actually declares that interface. Mismatched
+   or missing boundary maps are the #1 Anchor rejection reason.
+
+4. **Context fully embedded?** Read each story as if you know NOTHING about the
+   project. Can a developer implement it without reading BUSINESS.md, DESIGN.md, or
+   ARCHITECTURE.md? If not, the story is incomplete. No "see ARCHITECTURE.md for details."
+
+5. **Integration tests specified?** Every story must include explicit testing
+   requirements with "Integration tests: MANDATORY (no mocks)." Stories without
+   this will be rejected by PM-Acceptor.
+
+6. **MANDATORY SKILLS section present?** Every story must have it, even if the
+   value is "None identified."
+
+7. **Acceptance criteria specific and testable?** "The API should be fast" is not
+   testable. "GET /api/items responds in < 200ms for 100 items" is testable.
+
+8. **Atomic and INVEST-compliant?** If a story modifies more than 3 files, it
+   probably needs splitting. If it touches more than 2 architectural layers, it
+   definitely does.
+
+9. **Copy-paste audit?** Verify technical terms match ARCHITECTURE.md exactly
+   (see Terminology Audit below).
+
+10. **No orphan stories?** Every story must have a parent epic.
+
+**If any check fails, fix it BEFORE submitting to Anchor.** The goal is zero
+Anchor rejections. Every rejection wastes tokens and time on a round-trip that
+I should have prevented.
+
+### 10) Terminology Audit (Mandatory -- run after all stories are created)
 
 After creating all stories, cross-reference every embedded technical term against
 ARCHITECTURE.md. Common divergence patterns to catch:
@@ -240,7 +311,7 @@ ARCHITECTURE.md. Common divergence patterns to catch:
 - Unit mismatches (stories say `km`, ARCHITECTURE.md says `miles`)
 - PK type differences
 
-### 10) Mark Actionable Vault Notes as Incorporated
+### 11) Mark Actionable Vault Notes as Incorporated
 
 ```bash
 vlt vault="Claude" property:set name="actionable" value="incorporated" file="<Note>"
@@ -308,6 +379,15 @@ status: new
 ```
 
 5. Set dependency chain if the bug blocks other work: `nd dep add <blocked-story> <bug-id>`
+
+## Branch-per-Epic
+
+After creating the epic, create the working branch:
+  git checkout -b epic/<EPIC-ID> main
+All stories in the epic are developed on this branch. After all stories are accepted
+and the epic is closed, the dispatcher runs the epic completion gate (full test suite
+including e2e, then Anchor milestone review) and merges to main. The merge mode
+(direct or PR) depends on `workflow.solo_dev` setting (default: direct merge).
 
 ## Hard Rules
 

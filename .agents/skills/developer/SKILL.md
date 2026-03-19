@@ -110,21 +110,19 @@ run integration tests unconditionally -- do NOT gate behind env vars.
 
 ### 7) Pre-Delivery Self-Check (MANDATORY)
 
-Before marking a story as delivered, scan your changed files for incomplete implementation:
-- Stubs: `NotImplementedError`, `panic("todo")`, `return {}`, bare `pass`, `unimplemented!()`
-- Thin files: files with only type definitions or empty function bodies
-- TODO markers: should be resolved or documented in the delivery proof explaining why they remain
-
+Before marking a story as delivered, run:
 ```bash
-# Example: search for common stub patterns in changed files
-grep -rn 'NotImplementedError\|panic("todo")\|unimplemented!\|raise NotImplementedError' <changed-files>
+pvg verify <paths-to-changed-files> --format=text
 ```
 
-Fix any stub or thin file issues before delivery. TODO markers should be resolved
+This catches stubs, thin files, and TODO markers that the PM-Acceptor will reject on sight.
+Pass the explicit changed file paths, not `.`. If you choose to scan a directory instead,
+add `--include-tests` whenever test files changed.
+Fix any `stub` or `thin_file` issues before delivery. `todo` markers should be resolved
 or documented in the delivery proof explaining why they remain.
 
-The PM-Acceptor runs this same check as its FIRST step (before LLM review). Delivering
-code that fails this check wastes everyone's tokens.
+The PM-Acceptor runs pvg verify as its FIRST step (before LLM review). Delivering code
+that fails this check wastes everyone's tokens.
 
 ### 8) Run The Story's Required Test/CI Commands And Capture Proof
 
@@ -184,6 +182,9 @@ pvg nd update <story-id> --append-notes "## Implementation Evidence (DELIVERED)
 
 ### Wiring (only if in scope)
 - <new thing> -> called from <file:line>
+
+### pvg verify
+- <paste pvg verify output>
 
 ### AC Verification
 | AC # | Requirement | Code Location | Test Location | Status |

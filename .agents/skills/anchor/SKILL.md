@@ -62,6 +62,7 @@ Backlog review targets:
 - missing integration wiring stories (components exist but never connect)
 - stories that are not self-contained (developer would need external context)
 - missing test requirements (especially integration tests with real integration)
+- **e2e capstone story missing from epic?** Each epic must have an e2e test story that exercises the full system from the user's perspective, blocked by all other stories in the epic. If missing = REJECTED
 - dependency graph incoherence (parallel stories that will conflict, missing `blocks`)
 - INVEST violations (stories too large, not independent, not testable)
 - incorrect milestone labels (bidirectional check: every story has correct milestone label, every D&F item represented)
@@ -110,6 +111,21 @@ Report a MAXIMUM of 5 issues per rejection round, prioritized by severity:
 
 If more than 5 issues exist, report only the top 5 and note "additional issues likely
 remain." This forces iterative convergence: fix 5, resubmit, catch the next batch.
+
+## E2e Test Existence (Milestone Review -- CRITICAL)
+
+Before checking test quality, verify e2e tests EXIST:
+
+```bash
+pvg verify --check-e2e
+```
+
+If this reports zero e2e test files: **GAPS_FOUND immediately**. Do not proceed
+with the rest of the review. "All e2e tests pass" is vacuously true when zero
+e2e tests exist -- that is not passing, that is missing.
+
+After confirming e2e tests exist, verify they were actually executed in the
+test output (not skipped, not gated behind env vars).
 
 ## Hard-TDD Validation (Milestone Review)
 
