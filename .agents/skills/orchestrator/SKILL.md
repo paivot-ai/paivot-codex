@@ -3,9 +3,9 @@ name: orchestrator
 description: >
   Automated dispatcher for Paivot personas in Codex. Uses spawn_agent for multi-agent
   orchestration, nd stories as the single source of truth, and vault knowledge for
-  context. Enforces D&F gates, status/evidence/proof contracts, concurrency limits,
-  the Sr PM / Anchor iterative loop, and the epic completion gate (e2e tests + Anchor
-  milestone review) before merging to main.
+  context. Enforces one-epic-at-a-time containment, D&F gates, status/evidence/proof
+  contracts, concurrency limits, the Sr PM / Anchor iterative loop, and the epic
+  completion gate (e2e tests + Anchor milestone review) before merging to main.
 ---
 
 # Orchestrator (Automated via spawn_agent)
@@ -13,11 +13,25 @@ description: >
 ## Purpose
 
 The orchestrator coordinates Paivot personas using Codex's `spawn_agent` for automated
-multi-agent orchestration. It decides what to run next based on nd story state, spawns
-the appropriate agent, waits for completion, and advances the workflow.
+multi-agent orchestration. It drains one epic at a time -- all stories accepted, merged,
+e2e verified -- before rotating to the next. Parallelization happens WITHIN the current
+epic, not across epics.
 
 **Hard rule:** the orchestrator does not implement code. It only dispatches agents
 and manages workflow state.
+
+## Defaults and Settings
+
+| Setting | Default | Override |
+|---------|---------|----------|
+| Epic selection | Auto (highest-priority with actionable work) | `epic_id=EPIC_ID` input |
+| Scope | Single epic at a time | `--all` (legacy, no containment) |
+| Auto-rotate | On (rotate to next epic after completion gate) | Inherent to epic mode |
+| Max iterations | 50 | `--max N` (0 = unlimited) |
+| Concurrency | Within current epic only | Stack-dependent limits |
+
+The dispatcher NEVER picks stories from outside the current epic. `pvg loop next --json`
+enforces this structurally -- it only returns stories scoped to the active epic.
 
 ## Inputs
 
@@ -25,7 +39,7 @@ Provide one of:
 - `epic_id` (optional): nd epic to drive to completion
 - `story_id` (optional): nd story to advance
 - `mode` (optional): `dispatcher` to enter full dispatcher mode for a project
-- If none provided: orchestrate by asking `pvg loop next --json` what should happen next
+- If none provided: `pvg loop setup` auto-selects the highest-priority epic with actionable work
 
 ## Dispatcher Mode
 
@@ -49,6 +63,7 @@ You NEVER:
 - Edit source files for any reason, including "cleanup" or "git maintenance"
 - Inspect agent worktree internals (cd into worktree dirs, run git log, read source there)
 - Re-close stories that the PM-Acceptor already closed (it closes on acceptance -- just read its output)
+- Query nd globally for dispatch decisions (use `pvg loop next --json` instead)
 
 ### Infrastructure Context (MANDATORY before first developer spawn)
 
@@ -82,14 +97,14 @@ When a Developer or PM-Acceptor agent outputs `DISCOVERED_BUG:` blocks:
 ### Epic Auto-Close
 
 After `pm_acceptor` accepts a story, it checks if all siblings in the parent epic are
-closed. If so, it closes the epic. Epic completion is NOT a loop termination event --
-the loop moves to the next ready work in the backlog.
+closed. If so, it closes the epic. When `pvg loop next --json` detects all stories are
+accepted and merged, it returns `epic_complete` -- triggering the completion gate.
 
 ### Epic Completion (All Stories Merged)
 
-When all stories in the epic have been approved and merged to the epic branch,
-the epic enters a three-step completion gate before merging to main. All three
-steps are structural -- no step may be skipped.
+When `pvg loop next --json` returns `epic_complete`, the epic enters a three-step
+completion gate before merging to main. All three steps are structural -- no step
+may be skipped.
 
 **Step 1: Epic Verification Gate (STRUCTURAL -- always on)**
 
@@ -190,6 +205,121 @@ gh pr create --base main --head "epic/EPIC_ID" \
   --body "All stories accepted. Full test suite passing. Anchor review: VALIDATED."
 ```
 
+## Branch Management (Two-Level Model)
+
+Paivot uses a two-level branching strategy: `main -> epic -> story`.
+
+**Your responsibilities as dispatcher:**
+
+### Story Branch Setup
+
+Before spawning a developer:
+
+```bash
+# Ensure epic branch exists (create if needed)
+git fetch origin
+if ! git rev-parse --verify origin/epic/EPIC_ID >/dev/null 2>&1; then
+  git checkout -b epic/EPIC_ID origin/main
+  git push -u origin epic/EPIC_ID
+fi
+
+# Create story branch from epic
+git checkout -b story/STORY_ID origin/epic/EPIC_ID
+git push -u origin story/STORY_ID
+```
+
+Developer receives a checkout on `story/STORY_ID`. They work in isolation,
+cannot accidentally push to epic or main.
+
+### Story Merge (After PM Approves)
+
+**CRITICAL:** Merging is your IMMEDIATE next step after PM acceptance. Complete
+the merge (including conflict resolution) before moving to the next priority item.
+A story that is accepted in nd but not merged in git is incomplete work.
+
+After PM-Acceptor adds `accepted` and closes the delivered story:
+
+**Step 1: Attempt the merge**
+
+```bash
+git fetch origin
+git checkout epic/EPIC_ID
+git pull origin epic/EPIC_ID
+git merge --no-ff origin/story/STORY_ID -m "merge(epic/EPIC_ID): integrate STORY_ID"
+```
+
+**Step 2a: Merge succeeded** -- push and clean up:
+
+```bash
+git push origin epic/EPIC_ID
+git branch -D story/STORY_ID
+git push origin --delete story/STORY_ID
+```
+
+**Step 2b: Merge conflict** -- abort, stay on epic, spawn developer, retry:
+
+Do NOT checkout main. Do NOT move to another priority item. Handle inline.
+
+```bash
+# 1. Abort the failed merge. Stay on the epic branch.
+git merge --abort
+# You are still on epic/EPIC_ID. Do NOT checkout main or any other branch.
+```
+
+```
+# 2. Spawn developer for conflict resolution. Use this exact prompt:
+CONFLICT RESOLUTION MODE. Story STORY_ID is accepted but cannot merge
+into epic/EPIC_ID due to conflicts.
+
+Your task: rebase story/STORY_ID onto the latest epic/EPIC_ID, resolving
+all conflicts.
+
+Steps:
+1. git fetch origin
+2. git checkout story/STORY_ID
+3. git rebase origin/epic/EPIC_ID
+4. Resolve conflicts in each file (keep functionality from both sides)
+5. git rebase --continue after each resolution
+6. Run tests to verify nothing is broken
+7. git push --force-with-lease origin story/STORY_ID
+
+Do NOT update nd -- the story is already accepted and closed.
+Report: list of conflicting files, resolution decisions, test results.
+```
+
+```bash
+# 3. After developer completes, retry the merge from the epic branch:
+git fetch origin
+git checkout epic/EPIC_ID
+git pull origin epic/EPIC_ID
+git merge --no-ff origin/story/STORY_ID -m "merge(epic/EPIC_ID): integrate STORY_ID"
+```
+
+```bash
+# 4. If retry succeeds: push and clean up (same as Step 2a).
+# 5. If retry STILL fails: escalate to user:
+#    "Merge conflict persists for STORY_ID into epic/EPIC_ID after developer
+#     rebase. Please resolve manually or provide guidance."
+```
+
+**Canonical branch names:** use `epic/<EPIC_ID>` and `story/<STORY_ID>` exactly.
+Do not append descriptive suffixes.
+
+**Merge order:** If multiple stories are waiting to merge, process them in
+dependency order first, then priority order (P0 first) within each ready layer.
+
+### Story Branch Cleanup (after merge)
+
+After merging a developer's story branch, clean up in one step:
+
+```bash
+git branch -D story/<story-id>
+git push origin --delete story/<story-id>
+```
+
+**Always use `-D` (not `-d`):** the branch is merged to the local epic branch
+but not to `origin/main`, so `-d` will always fail with "not fully merged".
+
 ## spawn_agent Usage
 
 Codex provides these primitives for multi-agent orchestration:
@@ -218,6 +348,8 @@ Current Codex behavior to account for:
 - Branches/worktrees must be created explicitly when the workflow depends on them; do not assume Codex selected the right checkout for you.
 
 ## Concurrency Limits
+
+All concurrency is WITHIN the current epic.
 
 Detect stack from project files and enforce limits:
 
@@ -476,11 +608,35 @@ Review the backlog for gaps. Return APPROVED or REJECTED.""")
 # If 3 rounds exhausted without APPROVED: escalate to user
 ```
 
+## Setup
+
+Initialize the loop before entering the iteration protocol:
+
+```python
+# Default: auto-select highest-priority epic with actionable work
+shell("pvg loop setup")
+
+# Target a specific epic
+shell("pvg loop setup --epic EPIC_ID")
+
+# Legacy: run across all epics without containment (not recommended)
+shell("pvg loop setup --all")
+```
+
+Verify activation succeeded before continuing.
+
 ## Execution Loop (Post-Backlog Approval)
 
-**The loop is permanent.** It runs across the ENTIRE backlog, not a single epic.
-When an epic completes (auto-closed by pm_acceptor), the loop moves to the next
-epic with ready work. The loop only stops when the backlog is empty or fully blocked.
+The loop drains one epic at a time. Each iteration, `pvg loop next --json` is the
+SINGLE SOURCE OF TRUTH for what happens next. Do NOT query nd directly with
+`pvg nd ready --json` or `pvg nd list --json` for choosing what to work on next.
+Those queries are unscoped and will return stories from ALL epics, breaking containment.
+
+You MAY use nd directly for:
+- Reading story content before spawning a developer (`pvg nd show STORY_ID`)
+- Checking story labels (`pvg nd show STORY_ID --json`)
+- Bug triage routing (DISCOVERED_BUG blocks)
+- Epic auto-close checks after PM acceptance
 
 ```python
 while True:
@@ -497,11 +653,21 @@ Create properly structured bugs for these discovered issues:
     step = shell("pvg loop next --json")
 
     if step.decision == "complete":
-        break
+        break  # All epics drained
     if step.decision == "blocked":
-        break
+        break  # All remaining work globally is blocked (--all mode)
     if step.decision == "wait":
-        wait_for_existing_agents()
+        wait_for_existing_agents()  # Agents working in current epic
+        continue
+    if step.decision == "epic_complete":
+        run_epic_completion_gate(step.epic_id)  # e2e + Anchor + merge to main
+        continue
+    if step.decision == "epic_blocked":
+        escalate_to_user(f"All remaining work in epic {step.epic_id} is blocked.")
+        break
+    if step.decision == "rotate":
+        # Epic done and gate passed. Update loop state to next epic.
+        shell(f"pvg loop setup --epic {step.next_epic}")
         continue
     if step.decision != "act":
         escalate_to_user(step.reason)
@@ -516,6 +682,9 @@ Create properly structured bugs for these discovered issues:
         close_agent(pm_id)
         if "DISCOVERED_BUG:" in pm_result:
             pending_bug_reports = extract_bug_reports(pm_result)
+        # IMMEDIATELY after acceptance: merge story branch to epic branch
+        # Complete the merge before running pvg loop next --json again.
+        merge_story_to_epic(story_id, step.epic_id)
         continue
 
     if step.next.hard_tdd and step.next.phase == "red":
@@ -533,7 +702,33 @@ Create properly structured bugs for these discovered issues:
         pending_bug_reports = extract_bug_reports(dev_result)
 ```
 
-**Epic completion is NOT a termination event.** The loop keeps running.
+## Epic Flow
+
+The loop drains one epic at a time:
+
+1. **Start**: `pvg loop setup` auto-selects the highest-priority epic with actionable work
+2. **Execute**: all parallelization happens WITHIN the current epic
+   (multiple developers on different stories, one PM reviewing)
+3. **Complete**: when all stories are accepted and merged to the epic branch,
+   `pvg loop next --json` returns `epic_complete`
+4. **Gate**: run the epic completion gate (e2e tests + Anchor milestone review + merge to main)
+5. **Rotate**: `pvg loop next --json` returns `rotate` with `next_epic` -- update state and continue
+
+Epic completion is a GATE, not a passthrough. The full gate (e2e, Anchor, merge to main)
+MUST finish before rotation. There is no cherry-picking across epics.
+
+## Termination
+
+The loop drains one epic at a time. Termination conditions:
+
+| Condition | Action |
+|-----------|--------|
+| No actionable epics remain | Allow exit |
+| Current epic blocked, no other epics | Allow exit |
+| Max iterations reached | Allow exit |
+| Too many consecutive waits (3) | Allow exit |
+| Current epic has actionable work | Continue |
+| Current epic complete, next epic exists | Rotate, continue |
 
 ### Live Demo (before session exit)
 
@@ -551,19 +746,21 @@ test suite -- not as normal.
 
 ## Context Loss Recovery
 
-When context is lost (compaction, new session, restart), the orchestrator recovers
-by inspecting nd state directly:
+After context loss (compaction, new session, restart), run recovery as the FIRST
+command before touching git, before spawning agents, before inspecting branches:
 
 ```python
 # Recovery after context loss
-# 1. Find stories stuck in progress (stale agents)
-stale = shell("pvg nd list --status in_progress --json")
+shell("pvg loop recover")
 
-# 2. Ask pvg what should happen next
+# Then resume the execution loop -- pvg loop next --json picks up where we left off
 step = shell("pvg loop next --json")
-
-# 4. Resume the execution loop from the top -- nd state is the source of truth
 ```
+
+`pvg loop recover` automatically:
+1. Removes stale agent worktrees and branches
+2. Resets orphaned in-progress stories to `open` (delivered stories are preserved)
+3. Outputs a recovery summary showing what is ready, delivered, and needs attention
 
 **Before expected context loss**, note the current agent assignments in nd:
 ```python
@@ -629,43 +826,53 @@ if tampered:
 
 ## Decision Rules (What To Run Next)
 
+These rules apply WITHIN the current epic. `pvg loop next --json` encodes them;
+do not re-implement them in prompt logic.
+
+| Decision | Condition | Action |
+|----------|-----------|--------|
+| `act` (pm_acceptor) | Delivered stories in current epic | Spawn `pm_acceptor` |
+| `act` (developer) | Rejected stories in current epic | Spawn `developer` (rework) |
+| `act` (developer) | Ready stories in current epic | Spawn `developer` (new) |
+| `epic_complete` | All stories accepted and merged | Run epic completion gate |
+| `epic_blocked` | All remaining work in epic is blocked | Escalate to user |
+| `wait` | In-progress work in current epic | Wait for agent completions |
+| `rotate` | Epic gate passed, next epic exists | Update loop state to next epic |
+| `complete` | All epics drained | Allow exit |
+| `blocked` | All remaining work globally blocked (--all mode) | Allow exit |
+
+Pre-execution priorities (checked before `pvg loop next --json`):
+
 | Priority | Condition | Next Skill |
 |----------|-----------|------------|
 | 0 | DISCOVERED_BUG blocks pending | `sr_pm` (bug_triage) |
-| 1 | Delivered stories awaiting review | `pm_acceptor` |
-| 2 | Rejected stories need rework | `developer` (rework) |
-| 3 | Ready work exists anywhere in backlog | `developer` (new) |
-| 4 | Backlog quality issues (post-D&F) | `sr_pm` (repair) |
-| 5 | D&F incomplete (greenfield) | `business_analyst` -> `designer` -> `architect` |
-| 6 | D&F complete, no backlog | `sr_pm` -> `anchor` loop |
-| 7 | Milestone complete | `retro` |
-
-## Story Branch Cleanup (after merge)
-
-After merging a developer's story branch, clean up in one step:
-
-```bash
-git branch -D story/<story-id>
-```
-
-**Always use `-D` (not `-d`):** the branch is merged to the local epic branch or main
-but not to `origin/main`, so `-d` will always fail with "not fully merged".
+| - | D&F incomplete (greenfield) | `business_analyst` -> `designer` -> `architect` |
+| - | D&F complete, no backlog | `sr_pm` -> `anchor` loop |
+| - | Milestone complete | `retro` |
 
 Use `pvg story deliver|accept|reject` for state transitions. The orchestrator should not
 replay label choreography itself after an agent already completed the transition.
 
 ## Required nd Operations
 
+**Dispatch decisions come from `pvg loop next --json` ONLY.** Do NOT use the queries
+below for choosing what to work on next -- they are unscoped and break epic containment.
+
 ```bash
+pvg loop next --json   # SINGLE SOURCE OF TRUTH for dispatch decisions
 pvg nd prime           # Full project context
-pvg nd ready           # Unblocked work (supports same filters as nd list)
-pvg nd ready --priority 0 --json       # P0 bugs first
-pvg nd ready --parent <epic-id> --json # Ready work scoped to an epic
-pvg nd list --status in_progress --label delivered --json  # Delivered stories
-pvg nd list --status open --label rejected --json          # Rejected stories
-pvg loop next --json   # Deterministic next action (delivered -> rejected -> ready)
-pvg nd show <id>       # Full story context
+pvg nd show <id>       # Full story context (allowed for reading before agent spawn)
+pvg nd show <id> --json # Check labels (allowed for hard-tdd detection, etc.)
 pvg nd stats           # Backlog statistics
+```
+
+The following are informational only -- never use them for dispatch:
+
+```bash
+pvg nd ready           # Unblocked work (UNSCOPED -- do not use for dispatch)
+pvg nd ready --parent <epic-id> --json # Scoped but pvg loop next is authoritative
+pvg nd list --status in_progress --label delivered --json  # Informational only
+pvg nd list --status open --label rejected --json          # Informational only
 ```
 
 **nd filter cheat sheet** (prevents wasted queries with wrong flags):

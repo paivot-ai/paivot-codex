@@ -59,7 +59,7 @@ vlt vault="Claude" search query=""   # Test connectivity
 - **Current Codex surfaces**: repo-local config is shared by the CLI and Codex app, so review flows, worktrees, automations, image inputs, and MCP-backed docs lookup stay aligned.
 - **Vault-backed knowledge**: All agents read from and write to the Obsidian vault for cross-session learning.
 - **nd issue tracking**: Stories are tracked in nd (not bd, not git branches). Live execution state uses a branch-independent nd vault, not `.vault/issues/` inside each story branch checkout.
-- **Trunk-based branching**: `main` plus `story/<id>` branches. PM review gates story merges; no shared sync branches.
+- **Two-level branching**: `main -> epic/<id> -> story/<id>`. Stories merge to their epic branch after PM acceptance; epic branches merge to main after the completion gate (e2e + Anchor review).
 
 ## The nd Contract (Status + Evidence + Proof)
 
@@ -108,7 +108,7 @@ Recent Codex agent features make a few constraints more important:
 - Use `send_input` to continue an active agent. Reserve `resume_agent` for agents that were previously closed.
 - If a story requires an isolated branch or worktree, create it explicitly before handing execution to a developer. Do not assume Codex created the right checkout implicitly.
 - Break-glass remains operator-controlled: `pvg loop cancel` stops unattended execution and `pvg loop recover` is the only safe recovery path after interruption or compaction.
-- Use `pvg loop next --json` for queue selection instead of re-implementing delivered/rejected/ready ordering in prompts.
+- Use `pvg loop next --json` as the SINGLE SOURCE OF TRUTH for dispatch. It enforces epic containment -- never query nd globally for what to work on next.
 - Use `pvg story deliver|accept|reject` for tracker transitions instead of hand-managing labels and status swaps.
 
 ## Role Semantics
@@ -129,11 +129,13 @@ When Paivot is invoked ("use Paivot", "Paivot this"), the orchestrator enters **
 - Relays D&F questions, milestone review prompts, and break-glass escalations to the user
 - Manages nd state transitions
 - Captures knowledge to vault
+- Drains one epic at a time -- NEVER works across epics
 
 The dispatcher NEVER writes code, D&F documents, or story files directly.
 It also NEVER resolves merge conflicts (spawn a developer -- conflict resolution requires code judgment)
 or edits source files for any reason, including "cleanup" or "git maintenance".
 It also MUST treat PM-Acceptor as an internal execution-stage agent rather than a user approval checkpoint.
+It also NEVER queries nd globally for dispatch decisions (use `pvg loop next --json` instead).
 
 ### D&F Specialist Review
 
@@ -149,16 +151,18 @@ Stack-dependent limits to prevent resource exhaustion:
 **Light stacks** (Python, TypeScript/JavaScript):
 - Max 4 developer agents, 2 PM-Acceptor, 6 total
 
-## Git Workflow (Trunk-Based)
+## Git Workflow (Two-Level Branch Model)
 
-Paivot Codex uses a trunk-based story-branch model: **`main` + `story/<id>`**
+Paivot Codex uses a two-level branching strategy: **`main -> epic/<id> -> story/<id>`**
 
 - **`main`**: protected trunk, always releasable
-- **`story/<id>`**: one branch per story, created from `main`
+- **`epic/<id>`**: one branch per epic, created from `main`
+- **`story/<id>`**: one branch per story, created from its epic branch
 
-PM review gates: story branches merge only after PM-Acceptor has accepted the story.
-Accepted means the story is both `closed` in nd and labeled `accepted`.
-There are no shared integration branches.
+PM review gates: story branches merge to their epic branch only after PM-Acceptor
+has accepted the story. Accepted means the story is both `closed` in nd and labeled
+`accepted`. Epic branches merge to main only after the completion gate (e2e tests +
+Anchor milestone review).
 
 See `docs/GIT_WORKFLOW.md` for detailed procedures and the shared-vault model.
 

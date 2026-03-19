@@ -48,7 +48,9 @@ When multiple agents work in separate branches or worktrees, the mutable nd back
 - `anchor`: adversarial reviewer (binary outcomes: APPROVED/REJECTED or VALIDATED/GAPS_FOUND).
 - `retro`: harvests learnings and writes vault knowledge notes with `actionable: pending`.
 - `orchestrator`: automated dispatcher using `spawn_agent`.
-- Queue selection should come from `pvg loop next --json`, not hand-rolled delivered/rejected/ready logic.
+- Queue selection MUST come from `pvg loop next --json`, not hand-rolled delivered/rejected/ready logic.
+  `pvg loop next --json` is the SINGLE SOURCE OF TRUTH for dispatch. It enforces epic containment
+  structurally -- it only returns stories scoped to the active epic in epic mode (the default).
 - Story transitions should use `pvg story deliver|accept|reject`, not manual label choreography.
 - For OpenAI API / ChatGPT / Codex questions, use the OpenAI Docs MCP server first when it is available.
 
@@ -71,11 +73,12 @@ vlt vault="Claude" append file="projects/<project>" content="..."
 Heavy stacks (Rust, iOS, C#, CF Workers): max 2 dev + 1 PM + 3 total.
 Light stacks (Python, TS/JS): max 4 dev + 2 PM + 6 total.
 
-## Git Workflow (Trunk-Based Development)
+## Git Workflow (Two-Level Branch Model)
 
-- `main`: protected, merges via PR
-- `story/<id>`: feature branches per story
-- No shared sync branches
+- `main`: protected trunk, always releasable
+- `epic/<id>`: one branch per epic, created from `main`
+- `story/<id>`: one branch per story, created from its epic branch
+- Stories merge to epic after PM acceptance; epics merge to main after completion gate
 
 ## Skills
 
