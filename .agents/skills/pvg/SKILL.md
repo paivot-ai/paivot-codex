@@ -121,6 +121,22 @@ pvg settings stack_detection=true
 
 Use dispatcher commands for Claude-path coordinator mode. Use settings for project-level workflow behavior.
 
+## Structural Gates (Pre-Anchor)
+
+```bash
+pvg rtm check    # Verify all tagged D&F requirements have covering stories
+pvg lint          # Check for artifact collisions (duplicate PRODUCES)
+```
+
+These are mandatory before submitting a backlog to the Anchor. Both are deterministic
+checks with exit code 0 on success, 1 on failure:
+
+- `pvg rtm check` reads BUSINESS.md, DESIGN.md, ARCHITECTURE.md for tagged requirements
+  ([NEW], [EXPANDED], [CRITICAL], [REQUIRED], [CHANGED]) and checks each has a covering
+  story in the backlog. Exit code 1 on uncovered requirements.
+- `pvg lint` scans all non-closed stories for PRODUCES blocks and flags any artifact
+  (file path) claimed by more than one story. Exit code 1 on collisions.
+
 ## Vault And Guard Operations
 
 ```bash

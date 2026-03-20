@@ -244,7 +244,17 @@ Verify boundary map consistency: every CONSUMES reference must match a PRODUCES 
 upstream story. Missing or mismatched interfaces will be caught by the Anchor and cause
 rejection.
 
-### 9) Pre-Anchor Self-Check (CRITICAL -- run BEFORE submitting to Anchor)
+### 9) Run Structural Gates (MANDATORY before Anchor submission)
+
+```bash
+pvg rtm check    # Verify all tagged D&F requirements have covering stories
+pvg lint          # Check for artifact collisions (duplicate PRODUCES)
+```
+
+Both must pass. Fix any failures before proceeding. These are deterministic
+checks -- if they fail, the Anchor WILL reject the backlog for the same reason.
+
+### 10) Pre-Anchor Self-Check (CRITICAL -- run BEFORE submitting to Anchor)
 
 The Anchor is an adversarial reviewer. If it finds issues, that means I missed them.
 The Anchor finding gaps is a failure of my rigor, not a normal part of the process.
@@ -301,7 +311,7 @@ nd stale --days=14               # No neglected issues
 Anchor rejections. Every rejection wastes tokens and time on a round-trip that
 I should have prevented.
 
-### 10) Terminology Audit (Mandatory -- run after all stories are created)
+### 11) Terminology Audit (Mandatory -- run after all stories are created)
 
 After creating all stories, cross-reference every embedded technical term against
 ARCHITECTURE.md. Common divergence patterns to catch:
@@ -311,11 +321,24 @@ ARCHITECTURE.md. Common divergence patterns to catch:
 - Unit mismatches (stories say `km`, ARCHITECTURE.md says `miles`)
 - PK type differences
 
-### 11) Mark Actionable Vault Notes as Incorporated
+### 12) Mark Actionable Vault Notes as Incorporated
 
 ```bash
 vlt vault="Claude" property:set name="actionable" value="incorporated" file="<Note>"
 ```
+
+### Feedback Generalization Protocol
+
+When the Anchor rejects the backlog, do NOT treat the rejection as a punch list.
+For EACH issue in the rejection:
+1. State the specific issue
+2. Identify the GENERAL RULE the issue is an instance of
+3. Enumerate EVERY element in the backlog that the rule applies to
+4. Verify compliance for each
+5. Output the full sweep BEFORE making any changes
+
+Example: if the Anchor says "3 epics missing e2e capstones," the general rule is
+"ALL epics require e2e capstones." Sweep ALL epics, not just the 3 named ones.
 
 ## Bug Triage Mode (`mode=bug_triage`)
 

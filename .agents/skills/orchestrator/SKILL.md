@@ -578,9 +578,17 @@ for round in range(3):
     # ...
 ```
 
-### Post-D&F: Sr PM / Anchor Iterative Loop
+### Post-D&F: Sr PM / Structural Gates / Anchor Pipeline
+
+The post-D&F pipeline is three steps:
+
+```
+Sr PM generates backlog -> pvg rtm check + pvg lint -> Anchor reviews
+```
 
 The Sr PM and Anchor form a loop. The backlog is NOT ready until the Anchor returns APPROVED.
+Between the Sr PM and the Anchor, two deterministic structural gates must pass. If either
+gate fails, the Sr PM fixes the issues before the Anchor ever sees the backlog.
 
 ```python
 for round in range(3):
@@ -593,7 +601,26 @@ Create self-contained stories with all context embedded.
     srpm_result = wait(srpm_id)
     close_agent(srpm_id)
 
-    # Step 2: Spawn Anchor
+    # Step 2: Structural gates (deterministic -- must pass before Anchor)
+    rtm_result = shell("pvg rtm check")
+    lint_result = shell("pvg lint")
+    if rtm_result.exit_code != 0 or lint_result.exit_code != 0:
+        # Gates failed -- re-spawn Sr PM with gate failures (counts as same round)
+        srpm_id = spawn_agent(prompt=f"""Use skill sr_pm.
+mode=fix_anchor_gaps.
+Structural gates failed. Fix these before Anchor review:
+pvg rtm check output: {rtm_result.output}
+pvg lint output: {lint_result.output}""")
+        wait(srpm_id)
+        close_agent(srpm_id)
+        # Re-check gates
+        rtm_result = shell("pvg rtm check")
+        lint_result = shell("pvg lint")
+        if rtm_result.exit_code != 0 or lint_result.exit_code != 0:
+            escalate_to_user("Structural gates still failing after Sr PM fix attempt.")
+            break
+
+    # Step 3: Spawn Anchor
     anchor_id = spawn_agent(prompt=f"""Use skill anchor.
 mode=backlog_review.
 epic_id={epic_id}.
