@@ -22,6 +22,8 @@ Optional:
 
 Use `pvg nd` (or `nd --vault "$PAIVOT_ND_VAULT"` when that env var is provided) for live tracker operations. The live backlog must stay branch-independent across all worktrees.
 
+**NEVER read `.vault/issues/` files directly** (via file reads or cat). Always use nd/pvg nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
+
 ### 0) Git Workflow (Trunk-Based Development)
 
 Work on a feature branch. No shared sync branches.

@@ -63,6 +63,7 @@ Checks:
 ```bash
 nd search "discovery" | head -20
 nd ready
+# NEVER read .vault/issues/ files directly -- always use nd commands
 ```
 
 ### 2) Load nd Source Of Truth

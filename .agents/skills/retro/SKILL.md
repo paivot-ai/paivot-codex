@@ -18,7 +18,7 @@ Required:
 
 ### 1) Load Accepted Stories In The Epic
 
-If nd is available:
+If nd is available (**NEVER read `.vault/issues/` files directly** -- always use nd commands):
 
 ```bash
 nd show <epic-id>

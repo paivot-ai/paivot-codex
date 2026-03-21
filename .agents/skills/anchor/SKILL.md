@@ -44,7 +44,7 @@ Use known patterns to identify gaps the backlog may be missing.
 
 ### 1) Load The Backlog/Epic
 
-If nd is available:
+If nd is available (**NEVER read `.vault/issues/` files directly** -- always use nd commands):
 
 ```bash
 nd show <epic-id>

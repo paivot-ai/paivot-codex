@@ -35,7 +35,7 @@ Use prior architectural decisions to maintain consistency and avoid re-deciding 
 If repo docs exist, read:
 - `docs/ARCHITECTURE.md` (single source of truth for decisions)
 
-If nd is available, inspect related work:
+If nd is available, inspect related work (**NEVER read `.vault/issues/` files directly** -- always use nd commands):
 
 ```bash
 nd search "architecture"

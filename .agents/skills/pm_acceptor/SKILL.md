@@ -37,6 +37,8 @@ If the story has `hard-tdd`, adjust review based on the dispatcher prompt phase:
 
 Use `pvg nd` (or `nd --vault "$PAIVOT_ND_VAULT"` when that env var is provided) for all live tracker operations so PM review is acting on the shared backlog, not a branch-local copy.
 
+**NEVER read `.vault/issues/` files directly** (via file reads or cat). Always use nd/pvg nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
+
 ### Phase 0: Load The Story
 
 ```bash
