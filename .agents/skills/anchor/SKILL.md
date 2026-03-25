@@ -67,6 +67,13 @@ Backlog review targets:
 - INVEST violations (stories too large, not independent, not testable)
 - incorrect milestone labels (bidirectional check: every story has correct milestone label, every D&F item represented)
 - **boundary map inconsistencies**: every CONSUMES reference must match a PRODUCES in an upstream story. Missing or mismatched interfaces = REJECTED
+- **Walking skeleton establishes ALL quality gate patterns?** The first story in an
+  epic sets the template. If it omits type specs, DLP integration, config patterns,
+  every subsequent story will propagate that gap. REJECTED if walking skeleton doesn't
+  establish patterns.
+- **CONSUMES includes API signatures?** Bare file paths without function signatures = REJECTED.
+- **Cross-cutting concerns reference existing modules?** Stories mentioning DLP/rate
+  limiting/audit must name the specific module and API in CONSUMES. Vague references = REJECTED.
 
 Milestone review targets:
 - "delivered" claims without proof
@@ -148,6 +155,13 @@ e2e tests exist -- that is not passing, that is missing.
 
 After confirming e2e tests exist, verify they were actually executed in the
 test output (not skipped, not gated behind env vars).
+
+## Quality Gate Validation (Milestone Review)
+
+Verify ALL new modules meet quality gates:
+1. **Type spec coverage:** Every public function in every new module must have type specifications.
+2. **Cross-cutting module integration:** Verify delivered code calls existing modules for DLP, rate limiting, etc.
+3. **Walking skeleton pattern propagation:** All modules follow patterns from the walking skeleton.
 
 ## Hard-TDD Validation (Milestone Review)
 

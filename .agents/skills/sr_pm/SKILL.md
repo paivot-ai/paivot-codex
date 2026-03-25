@@ -125,6 +125,20 @@ This forces interface thinking before implementation. When a downstream story is
 its CONSUMES section is verified against the upstream story's PRODUCES section. No more
 silent assumptions about what exists. Contracts are explicit and checked by the Anchor.
 
+### CONSUMES Must Include API Signatures (CRITICAL)
+
+CONSUMES entries that name only the file path are INSUFFICIENT. Developers are
+ephemeral agents who see only the story. Every CONSUMES entry must include:
+1. The upstream story ID and file path
+2. The actual function signature (name, arguments, return type)
+3. For cross-cutting modules, include a usage example
+
+### Cross-Cutting Concern Discovery (MANDATORY during story creation)
+
+When writing stories that involve security, configuration, observability, or other
+cross-cutting concerns, SEARCH THE CODEBASE for existing modules. Find the existing
+module and embed its API in the story's CONSUMES section.
+
 ### Copy, Don't Paraphrase (CRITICAL)
 
 When embedding technical context from ARCHITECTURE.md into stories, COPY exact strings for:
@@ -307,6 +321,14 @@ nd stale --days=14               # No neglected issues
    (see Terminology Audit below).
 
 10. **No orphan stories?** Every story must have a parent epic.
+
+11. **CONSUMES includes API signatures?** Every CONSUMES entry for a cross-cutting
+    module must include the actual function signature and usage pattern, not just a
+    file path.
+
+12. **Walking skeleton establishes ALL quality gate patterns?** The first story
+    in each epic sets the template. Verify its ACs explicitly require type specs
+    on all public functions, cross-cutting module integration, and config patterns.
 
 **If any check fails, fix it BEFORE submitting to Anchor.** The goal is zero
 Anchor rejections. Every rejection wastes tokens and time on a round-trip that

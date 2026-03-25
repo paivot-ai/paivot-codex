@@ -85,6 +85,39 @@ is available locally and include connection details in ALL developer agent promp
 Without this context, developers will reasonably gate tests behind env vars --
 creating dormant tests that satisfy no testing gate.
 
+### Context Injection Protocol (MANDATORY before developer spawn)
+
+Before spawning ANY developer agent, the dispatcher MUST enrich the prompt with
+concrete codebase context. Advisory instructions like "search for existing modules"
+are unreliable -- subagents skip them. Instead, the dispatcher reads the codebase
+and INJECTS the context directly into the developer prompt.
+
+**Step 1: Parse the story's CONSUMES block**
+
+Read the story and extract all CONSUMES entries. Each entry names an upstream module.
+
+**Step 2: Extract API signatures from consumed modules**
+
+For each consumed module/file, read it and extract:
+- Module name and one-line summary
+- All type specifications / signatures on public functions
+- Key usage examples
+
+Include as "CODEBASE CONTEXT" in the `spawn_agent` prompt.
+
+**Step 3: Scan ACs for cross-cutting keywords**
+
+Scan ACs for: DLP, rate limit, audit, config, security, telemetry.
+For each keyword, grep the codebase for relevant modules. Read discovered modules
+and inject their public APIs into the `spawn_agent` prompt.
+
+**Step 4: Inject existing patterns from accepted stories**
+
+If the story follows a walking skeleton, read one accepted module as a TEMPLATE
+and inject the first ~30 lines showing module structure and annotations.
+
+The developer receives everything needed to implement WITHOUT searching the codebase.
+
 ### Bug Triage Protocol
 
 When a Developer or PM-Acceptor agent outputs `DISCOVERED_BUG:` blocks:

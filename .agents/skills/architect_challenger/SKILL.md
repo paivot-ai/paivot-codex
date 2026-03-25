@@ -104,6 +104,18 @@ When the project has existing code, I also check:
 - Are migration paths defined for architectural changes?
 - Does the architecture build on existing components or unnecessarily replace them?
 
+## Cross-Cutting Module Concreteness (CRITICAL for execution)
+
+ARCHITECTURE.md must specify cross-cutting concerns concretely. Check that security,
+observability, and configuration sections specify:
+- Module names and file paths for cross-cutting components
+- Public API signatures for modules that others must integrate with
+- Integration patterns showing how new modules should call cross-cutting services
+- Quality gates that apply project-wide
+
+If ARCHITECTURE.md says "content must be DLP-scanned" but doesn't name the module
+or its API, this is an OMISSION.
+
 ## What I Do NOT Do
 
 - I never talk to the user. All feedback goes to the dispatcher, which re-spawns the Architect.

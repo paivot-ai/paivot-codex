@@ -64,6 +64,21 @@ LLM review when deterministic checks already caught incomplete implementation.
 grep -rn 'NotImplementedError\|panic("todo")\|unimplemented!\|raise NotImplementedError' <changed-files>
 ```
 
+### Tier 1b: Quality Gate Verification (deterministic -- run with Tier 1)
+
+1. **Type specs on all public functions:** For every new module, verify that all public
+   functions have type specifications (@spec, type hints, JSDoc, etc.). Missing type
+   specs on any public function = REJECT.
+
+2. **Cross-cutting concern integration:** Read the story's ACs. For each AC that
+   mentions DLP, security scanning, rate limiting, or audit logging, verify the
+   delivered code ACTUALLY CALLS the existing module (not an inline reimplementation).
+   If the AC mentions a cross-cutting concern but the code doesn't integrate with
+   the existing module, REJECT with specific guidance.
+
+3. **Config registration completeness:** When story adds config keys, verify they
+   appear in ALL required locations (runtime keys list, defaults, env var reader).
+
 ### Tier 2: Command (deterministic -- check CI evidence)
 
 - Evidence Check: are CI results, coverage, test output present?
@@ -91,6 +106,8 @@ If anything critical is missing: **REJECT** (do not "infer").
   No debug artifacts? No dangerous security mistakes?
 - Boundary Map Verification: does the delivered code actually PRODUCE what the story
   declared in its PRODUCES section? Check exports, function signatures, endpoints.
+- **Walking Skeleton Pattern Check:** If this story follows a walking skeleton,
+  verify it follows the same patterns. Divergence suggests incomplete pattern copying.
 
 ### Tier 4: Human (only when agent genuinely cannot verify)
 
