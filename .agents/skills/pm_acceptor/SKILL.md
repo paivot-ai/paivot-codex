@@ -93,6 +93,17 @@ Developer proof must include:
 - commit SHA + branch (when applicable)
 - AC-by-AC verification mapping (table or checklist)
 
+- **Zero warnings, zero errors (Own All Errors):** Scan the test output and build
+  output for ANY warnings, errors, or failures -- including pre-existing ones.
+  If the output is not clean, check whether the developer filed DISCOVERED_BUG
+  blocks for each issue. Reject if:
+  - Test output shows failures without corresponding DISCOVERED_BUG reports
+  - Build output shows warnings without corresponding DISCOVERED_BUG reports
+  - Developer dismissed errors as "pre-existing" or "not in scope" without reporting them
+  - Developer said "N tests failed but they're not related to this story"
+
+  The delivery standard is ZERO errors and ZERO warnings.
+
 If anything critical is missing: **REJECT** (do not "infer").
 
 ### Tier 3: Behavioral (LLM judgment)
@@ -108,6 +119,10 @@ If anything critical is missing: **REJECT** (do not "infer").
   declared in its PRODUCES section? Check exports, function signatures, endpoints.
 - **Walking Skeleton Pattern Check:** If this story follows a walking skeleton,
   verify it follows the same patterns. Divergence suggests incomplete pattern copying.
+- **Error Ownership Check:** Did the developer acknowledge ALL errors in their proof?
+  Look for language like "not my problem", "separate concern", "pre-existing",
+  "transport issue" used to dismiss errors without filing DISCOVERED_BUG reports.
+  This is a REJECTION reason even if the story's own ACs pass.
 
 ### Tier 4: Human (only when agent genuinely cannot verify)
 
