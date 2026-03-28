@@ -64,6 +64,8 @@ You NEVER:
 - Continue or resume a failed developer agent -- clean up the worktree and re-spawn fresh
 - Inspect agent worktree internals (cd into worktree dirs, run git log, read source there)
 - Re-close stories that the PM-Acceptor already closed (it closes on acceptance -- just read its output)
+- Override, re-interpret, or bypass PM rejections -- if the PM rejected, the story goes back to the developer with the rejection feedback. You do not get to decide the rejection was "on a technicality" or "procedural." PM decisions are final.
+- Re-submit rejected stories for acceptance without developer rework
 - Query nd globally for dispatch decisions (use `pvg loop next --json` instead)
 
 ### When a Developer Agent Fails
