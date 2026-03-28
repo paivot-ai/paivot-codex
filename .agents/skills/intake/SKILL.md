@@ -89,7 +89,7 @@ Work through the approved backlog top-to-bottom. For each story:
 1. **Spawn a developer agent** to implement the story
 2. **Spawn a PM-Acceptor agent** to review the delivered story
 3. **Capture learnings** to the vault
-4. If a discovered issue arises, quick-capture it: `nd q "Discovered: <description>" --type=bug`
+4. If a discovered issue arises during implementation, route it through the documented bug flow: Developer/PM-Acceptor emits `DISCOVERED_BUG`, then Sr PM triages it (or PM fast-track if enabled). Do NOT quick-capture ad-hoc bugs with `nd q`.
 5. Move to the next story
 
 ## Constraints

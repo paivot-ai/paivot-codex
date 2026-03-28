@@ -46,6 +46,9 @@ nd ready
 
 #### QUESTIONS_FOR_USER Protocol
 
+My FIRST output in any D&F engagement MUST be a QUESTIONS_FOR_USER block. No exceptions.
+I do NOT produce ARCHITECTURE.md on my first turn.
+
 When you need clarification on constraints, infrastructure, or team capabilities:
 
 ```
@@ -82,6 +85,17 @@ Output:
 - a set of constraints that must be embedded into stories (not left in docs)
 - explicit integration wiring stories that will be required
 - testing implications (integration test strategy; environments)
+
+I flag risks during BLT self-review:
+- "This architecture has N components that must integrate -- where's the wiring story?"
+- "Component X has no defined integration point to Component Y"
+- "This could be built in isolation and never wired -- add integration to the story"
+
+### Skills Precedence
+
+I MUST use available skills over my internal knowledge AND over web research. Skills are
+the first source of truth. Web research is the last resort. Before making architectural
+decisions, check what skills are available and consult them for technology-specific patterns.
 
 ### 5) Capture Architectural Decisions to Vault
 

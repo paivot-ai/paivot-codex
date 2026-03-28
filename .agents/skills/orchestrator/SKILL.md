@@ -771,14 +771,12 @@ Create properly structured bugs for these discovered issues:
         continue
     if step.decision == "epic_complete":
         run_epic_completion_gate(step.epic_id)  # e2e + Anchor + merge to main
+        if step.next_epic:
+            shell(f"pvg loop rotate {step.next_epic}")
         continue
     if step.decision == "epic_blocked":
         escalate_to_user(f"All remaining work in epic {step.epic_id} is blocked.")
         break
-    if step.decision == "rotate":
-        # Epic done and gate passed. Update loop state to next epic.
-        shell(f"pvg loop setup --epic {step.next_epic}")
-        continue
     if step.decision != "act":
         escalate_to_user(step.reason)
         break
@@ -822,7 +820,7 @@ The loop drains one epic at a time:
 3. **Complete**: when all stories are accepted and merged to the epic branch,
    `pvg loop next --json` returns `epic_complete`
 4. **Gate**: run the epic completion gate (e2e tests + Anchor milestone review + merge to main)
-5. **Rotate**: `pvg loop next --json` returns `rotate` with `next_epic` -- update state and continue
+5. **Rotate**: call `pvg loop rotate <next_epic>` to transition loop state, then continue iterating
 
 Epic completion is a GATE, not a passthrough. The full gate (e2e, Anchor, merge to main)
 MUST finish before rotation. There is no cherry-picking across epics.
@@ -944,10 +942,9 @@ do not re-implement them in prompt logic.
 | `act` (pm_acceptor) | Delivered stories in current epic | Spawn `pm_acceptor` |
 | `act` (developer) | Rejected stories in current epic | Spawn `developer` (rework) |
 | `act` (developer) | Ready stories in current epic | Spawn `developer` (new) |
-| `epic_complete` | All stories accepted and merged | Run epic completion gate |
+| `epic_complete` | All stories accepted and merged | Run epic completion gate, then `pvg loop rotate <next_epic>` if present |
 | `epic_blocked` | All remaining work in epic is blocked | Escalate to user |
 | `wait` | In-progress work in current epic | Wait for agent completions |
-| `rotate` | Epic gate passed, next epic exists | Update loop state to next epic |
 | `complete` | All epics drained | Allow exit |
 | `blocked` | All remaining work globally blocked (--all mode) | Allow exit |
 

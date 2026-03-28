@@ -16,7 +16,7 @@ Maintain a machine-checkable C4 architecture model alongside the narrative ARCHI
 Check the project setting before using this skill:
 
 ```bash
-grep 'architecture.c4' .vault/knowledge/.settings.yaml 2>/dev/null || echo "false"
+pvg settings architecture.c4
 ```
 
 - `true` -- maintain the model, enforce boundaries, generate diagrams
@@ -204,9 +204,25 @@ Add to every story that touches code (when C4 is enabled):
 - **AC: Architecture boundaries respected**
 - **AC: Diagrams regenerated** (if architecture changed)
 
+### Sr PM Agent
+
+When C4 is enabled, add to every story that touches code:
+- **AC: Architecture boundaries respected** (no new cross-boundary dependencies unless contract updated)
+- **AC: Diagrams regenerated** (if architecture changed)
+
+Add to the story's MANDATORY SKILLS TO REVIEW section:
+- `c4` -- for boundary checking
+
 ### Developer Agent
-Before coding: read the Architecture Contract, identify boundaries.
-After coding: verify no new imports cross boundaries outside `allow` rules.
+Before coding:
+1. Read the Architecture Contract
+2. Identify which boundaries the story's code paths fall within
+3. Note allowed and denied dependencies for those boundaries
+
+After coding:
+1. Verify no new imports cross boundaries outside the `allow` rules
+2. If architecture changed: update `workspace.dsl` and the Architecture Contract
+3. If `workspace.dsl` changed: regenerate diagrams
 
 ### Anchor Agent
 Review checklist addition:
@@ -228,6 +244,12 @@ C4Context
     System(system, "My System", "What it does")
     Rel(user, system, "Uses", "HTTPS")
 ```
+
+## What This Skill Does NOT Do
+
+- Does not require Structurizr CLI as a dependency (Mermaid generation works without it)
+- Does not add CI checks (the Anchor agent performs this role)
+- Does not change any behavior when architecture.c4 is false
 
 ## Invocation
 

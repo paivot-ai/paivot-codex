@@ -261,7 +261,7 @@ placement, and dependency chain.
 - Do not manage the backlog (that is `sr_pm`).
 - Trust evidence when it is complete; do not re-run tests by default.
 - After accepting, always run epic auto-close check.
-- ACCEPT flow is TWO steps: `nd labels add <id> accepted` THEN `nd close <id> --reason=... --start=<next-id>`.
+- ACCEPT flow is TWO steps: `pvg nd labels add <id> accepted` THEN `pvg nd close <id> --reason=... --start=<next-id>`.
 
 ## Invocation
 

@@ -53,6 +53,16 @@ nd dep tree <epic-id>
 nd ready
 ```
 
+nd diagnostic commands (read-only):
+- Visualize dependency DAG: nd graph / nd graph <epic-id>
+- Detect dependency cycles: nd dep cycles
+- Inspect dependency tree: nd dep tree <id>
+- Review execution path: nd path / nd path <id>
+- Vault health check: nd doctor
+- Find neglected issues: nd stale --days=14
+- Check milestone readiness: nd epic close-eligible
+- Backlog statistics: nd stats
+
 ### 2) Review For Predictable Failure Modes
 
 Backlog review targets:
@@ -61,11 +71,15 @@ Backlog review targets:
 - missing horizontal concerns (auth, logging, error handling, observability, security)
 - missing integration wiring stories (components exist but never connect)
 - stories that are not self-contained (developer would need external context)
-- missing test requirements (especially integration tests with real integration)
+- integration tests mandatory (no mocks)?
 - **e2e capstone story missing from epic?** Each epic must have an e2e test story that exercises the full system from the user's perspective, blocked by all other stories in the epic. If missing = REJECTED
 - dependency graph incoherence (parallel stories that will conflict, missing `blocks`)
-- INVEST violations (stories too large, not independent, not testable)
+- stories are atomic and INVEST-compliant?
 - incorrect milestone labels (bidirectional check: every story has correct milestone label, every D&F item represented)
+- MANDATORY SKILLS section in every story?
+- security/compliance addressed?
+- zero dependency cycles? (run `nd dep cycles`)
+- no stale issues? (run `nd stale --days=14`)
 - **boundary map inconsistencies**: every CONSUMES reference must match a PRODUCES in an upstream story. Missing or mismatched interfaces = REJECTED
 - **Walking skeleton establishes ALL quality gate patterns?** The first story in an
   epic sets the template. If it omits type specs, DLP integration, config patterns,
@@ -159,7 +173,7 @@ test output (not skipped, not gated behind env vars).
 ## Quality Gate Validation (Milestone Review)
 
 Verify ALL new modules meet quality gates:
-1. **Type spec coverage:** Every public function in every new module must have type specifications.
+1. **@spec coverage:** Every public function in every new module must have @spec (or equivalent type annotations for the project's language).
 2. **Cross-cutting module integration:** Verify delivered code calls existing modules for DLP, rate limiting, etc.
 3. **Walking skeleton pattern propagation:** All modules follow patterns from the walking skeleton.
 

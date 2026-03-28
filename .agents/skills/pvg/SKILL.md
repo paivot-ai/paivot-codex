@@ -59,10 +59,9 @@ current epic only:
 | Decision | Meaning |
 |----------|---------|
 | `act` | Spawn the agent specified in `next` (developer or pm_acceptor) |
-| `epic_complete` | All stories accepted/merged -- run the epic completion gate |
+| `epic_complete` | All stories closed -- run completion gate, then `pvg loop rotate <next_epic>` if present |
 | `epic_blocked` | All remaining work in the current epic is blocked -- escalate |
 | `wait` | Agents are working in the current epic -- do nothing |
-| `rotate` | Epic done and gate passed -- move to the next epic in `next_epic` |
 | `complete` | All epics drained -- allow exit |
 | `blocked` | All remaining work globally is blocked (--all mode) -- allow exit |
 
