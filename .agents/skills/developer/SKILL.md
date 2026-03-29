@@ -126,12 +126,17 @@ a. Verify @spec / type annotations on ALL public functions you wrote
 b. Verify every cross-cutting AC uses the EXISTING module (not inline reimplementation)
 c. Verify all config keys are registered in ALL required locations
 
-### 9) Run the FULL Test Suite (MANDATORY)
+### 9) Run Tests Proportional to Blast Radius (MANDATORY)
 
-Run the FULL test suite -- not just the tests you wrote or modified. Your changes may
-break tests you didn't touch. If the project uses `mix test`, run `mix test`. If
-`cargo test`, run `cargo test`. If `pytest`, run `pytest`. Run ALL tests, not a subset.
-Capture the full output as delivery evidence.
+Default: run the FULL test suite. If the user has explicitly constrained to targeted
+tests (e.g., long suites), run tests covering the blast radius of your changes -- not
+just the files you touched, but downstream dependents. A change to core storage paths
+requires running every test that touches storage, not just tests in the same directory.
+
+In delivery evidence, declare what you ran and what you skipped:
+"Ran 15/40 e2e tests covering storage + feeds. Skipped: auth, billing (no code path overlap)."
+
+The epic completion gate runs the full suite regardless -- this is your pre-gate diligence.
 
 ### 10) Pre-Delivery Self-Check (MANDATORY)
 
