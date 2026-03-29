@@ -126,7 +126,14 @@ a. Verify @spec / type annotations on ALL public functions you wrote
 b. Verify every cross-cutting AC uses the EXISTING module (not inline reimplementation)
 c. Verify all config keys are registered in ALL required locations
 
-### 9) Pre-Delivery Self-Check (MANDATORY)
+### 9) Run the FULL Test Suite (MANDATORY)
+
+Run the FULL test suite -- not just the tests you wrote or modified. Your changes may
+break tests you didn't touch. If the project uses `mix test`, run `mix test`. If
+`cargo test`, run `cargo test`. If `pytest`, run `pytest`. Run ALL tests, not a subset.
+Capture the full output as delivery evidence.
+
+### 10) Pre-Delivery Self-Check (MANDATORY)
 
 Before marking a story as delivered, run:
 ```bash
