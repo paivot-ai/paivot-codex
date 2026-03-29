@@ -248,6 +248,27 @@ gh pr create --base main --head "epic/EPIC_ID" \
   --body "All stories accepted. Full test suite passing. Anchor review: VALIDATED."
 ```
 
+**Step 4: Retro**
+
+After merging to main, spawn the retro agent to extract learnings:
+
+```
+EPIC RETRO for epic EPIC_ID.
+
+Extract LEARNINGS from all accepted stories in this epic. Analyze patterns
+across developer delivery notes and PM review feedback. Distill actionable
+insights and write them to the project vault (.vault/knowledge/).
+
+Epic: EPIC_ID
+```
+
+The retro agent is ephemeral -- it runs, captures knowledge, and is disposed.
+Do NOT skip this step. Do NOT rotate to the next epic before retro completes.
+
+**After retro**: if `epic_complete` included a `next_epic`, call
+`pvg loop rotate <next_epic>` to transition loop state, then continue.
+If no `next_epic`, the next `pvg loop next --json` returns `complete`.
+
 ## Branch Management (Two-Level Model)
 
 Paivot uses a two-level branching strategy: `main -> epic -> story`.
