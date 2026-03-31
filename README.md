@@ -31,6 +31,19 @@ Paivot in Codex is centered on:
 | [vlt](https://github.com/RamXX/vlt) | Vault CLI for Obsidian-backed knowledge | `git clone && make install` |
 | Obsidian vault | Persistent knowledge layer | Vault named `Claude` recommended |
 
+### Codebase indexing MCP server (strongly recommended)
+
+A codebase indexing MCP server dramatically improves story quality. When available, Paivot agents use it for API signature verification, cross-cutting concern discovery, and module count validation instead of grep. This prevents the most common class of Anchor rejections: hallucinated API signatures.
+
+Any MCP server that provides `search_graph`, `get_code_snippet`, and `trace_call_path` works. Two tested options:
+
+- **[codebase-memory-mcp](https://github.com/nicobailon/codebase-memory-mcp)** -- Graph-based indexing with Cypher queries, call path tracing, and architecture summaries
+- **[Augment Code](https://www.augmentcode.com/)** (cx) -- Commercial codebase intelligence with similar capabilities
+
+Install via your Codex MCP configuration (`.codex/config.toml` for repo-local, or `~/.codex/config.toml` for global). After indexing, agents automatically prefer MCP tools over grep for codebase queries.
+
+Without a codebase indexing server, agents fall back to grep/ripgrep. This works but is slower, less precise on call graph analysis, and cannot verify module counts as reliably.
+
 Verify your environment:
 
 ```bash

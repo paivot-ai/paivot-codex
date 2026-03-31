@@ -75,6 +75,58 @@ If a developer agent fails, returns partial output, or times out:
 3. If delivered: proceed with PM review
 4. NEVER cd into the worktree, inspect git log, or try to continue the agent
 
+### CWD Safety (CRITICAL -- read this before any worktree operation)
+
+Codex's shell CWD can silently drift into a worktree path after agent
+completion or background task resolution. If you then remove that worktree,
+your CWD becomes invalid and **every subsequent shell command fails permanently**.
+The session is unrecoverable -- you must ask the user to restart Codex.
+
+**Prevention rules:**
+
+1. **ALWAYS prefix worktree operations with an explicit cd to the project root:**
+   ```bash
+   cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/dev-STORY_ID
+   ```
+   Do NOT rely on your CWD being correct. Always cd first.
+
+2. **NEVER chain branch checkout + worktree add in one shell call:**
+   ```bash
+   # WRONG -- if checkout changes main worktree, worktree add may fail:
+   git checkout -b story/X epic/Y && git worktree add .claude/worktrees/dev-X story/X
+
+   # RIGHT -- two separate shell calls:
+   git checkout -b story/X epic/Y
+   # (then in a SEPARATE call:)
+   git worktree add .claude/worktrees/dev-X story/X
+   ```
+
+3. **After any agent completes, verify CWD:**
+   ```bash
+   pwd
+   ```
+   If the output is inside `.claude/worktrees/`, reset immediately:
+   ```bash
+   cd $PROJECT_ROOT
+   ```
+
+4. **Use `pvg worktree remove` instead of raw `git worktree remove`.**
+   `pvg worktree remove` resolves the project root from the worktree path,
+   not from CWD, so it works even if CWD has drifted.
+
+**Recovery (if CWD is already invalid):**
+
+If you see `fatal: Unable to read current working directory` or
+`Working directory no longer exists`:
+
+1. Your session shell is corrupted. Raw shell commands will not work.
+2. Spawn a general-purpose agent with the cleanup task -- agents start from
+   the project root and have a fresh shell.
+3. The cleanup agent runs: `cd PROJECT_ROOT && git worktree prune && git worktree list`
+4. After cleanup, escalate to the user: "Shell CWD is unrecoverable. Please
+   restart Codex from PROJECT_ROOT."
+5. Include a summary of remaining work so the next session can resume.
+
 ### Infrastructure Context (MANDATORY before first developer spawn)
 
 Before spawning the first developer agent in a session, discover what infrastructure
@@ -230,9 +282,33 @@ git pull origin main
 git merge --no-ff epic/EPIC_ID -m "merge(main): complete EPIC_ID"
 git push origin main
 
-# Clean up epic branch (local + remote)
-git branch -D epic/EPIC_ID
+# Clean up epic branch (remote FIRST, then local)
+# ALWAYS use -D (force). -d will fail because the remote tracking ref
+# origin/epic/EPIC_ID still exists even though the branch is merged to HEAD.
 git push origin --delete epic/EPIC_ID
+git branch -D epic/EPIC_ID
+```
+
+**After** branch cleanup succeeds, close the epic in nd:
+```bash
+pvg nd update EPIC_ID --status closed --add-label accepted
+```
+
+Do NOT run nd updates in parallel with branch deletes. If the branch delete
+errors, parallel calls may be cancelled -- losing the nd update.
+
+Then clean up all story branches for this epic:
+
+```bash
+# Delete remote story branches
+for branch in $(git branch -r --list "origin/story/*" | sed 's|origin/||'); do
+  git push origin --delete "$branch" 2>/dev/null || true
+done
+
+# Delete local story branches
+for branch in $(git branch --list "story/*"); do
+  git branch -D "$branch" 2>/dev/null || true
+done
 ```
 
 **If `workflow.solo_dev=false`** (team workflow, PRs required):
@@ -400,14 +476,23 @@ the story branch is the durable record.
 2. Dispatcher creates dev worktree on story branch
 3. Developer works, commits, pushes on story branch
 4. Developer marks delivered
-5. Dispatcher removes dev worktree: `git worktree remove --force .claude/worktrees/dev-<STORY_ID>`
+5. Dispatcher removes dev worktree: `pvg worktree remove .claude/worktrees/dev-<STORY_ID>`
 6. Dispatcher creates PM worktree: `git worktree add .claude/worktrees/pm-<STORY_ID> story/<STORY_ID>`
-7. PM reviews, dispatcher removes PM worktree
+7. PM reviews, dispatcher removes PM worktree: `pvg worktree remove .claude/worktrees/pm-<STORY_ID>`
 8. If accepted: merge story to epic, then delete story branch
 
 ### Cleanup
-Remove worktrees with: `git worktree remove --force .claude/worktrees/<name>`
-Always use --force (build artifacts). Do NOT delete story branches when removing worktrees.
+
+Remove worktrees with:
+```bash
+pvg worktree remove .claude/worktrees/<worktree-name>
+```
+
+This resolves the project root from the worktree path (not CWD), runs
+`git worktree remove --force`, and prunes stale metadata. It is safe to call
+even if CWD has drifted into the worktree being removed.
+
+Do NOT delete story branches when removing worktrees.
 Story branches are deleted ONLY after merging to epic.
 
 ### Branch Locking
@@ -984,6 +1069,36 @@ Use `pvg story deliver|accept|reject` for state transitions. The orchestrator sh
 replay label choreography itself after an agent already completed the transition.
 
 ## Required nd Operations
+
+### nd dependency commands (reference)
+
+Dependencies are managed by `pvg nd dep`, NOT by flags on `pvg nd update`:
+
+```bash
+pvg nd dep add A B          # A depends on B (B blocks A)
+pvg nd dep rm A B           # Remove dependency
+pvg nd dep list A           # List dependencies of A
+pvg nd dep tree A           # Show full dependency tree
+pvg nd dep cycles           # Detect circular dependencies
+```
+
+**Auto-cascade:** When a blocker is closed, nd automatically unblocks dependents.
+You do NOT need to manually run `pvg nd dep rm` after closing a blocker story.
+
+**`pvg nd update` does NOT support `--remove-blocked-by` or `--add-blocked-by`.**
+These flags do not exist. Always use `pvg nd dep add` / `pvg nd dep rm` for dependency changes.
+
+### nd flag gotchas
+
+**Priority is numeric, not P-prefixed.** nd displays `P0`..`P4` but the CLI
+accepts only the integer:
+
+```bash
+pvg nd create --priority 0    # correct (P0)
+pvg nd create --priority 2    # correct (P2)
+pvg nd create --priority P2   # WRONG -- "invalid syntax" error
+pvg nd update X --priority 1  # correct
+```
 
 **Dispatch decisions come from `pvg loop next --json` ONLY.** Do NOT use the queries
 below for choosing what to work on next -- they are unscoped and break epic containment.
