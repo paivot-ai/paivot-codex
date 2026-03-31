@@ -42,26 +42,34 @@ vlt vault="Claude" search query="[type:convention] testing"
 
 Use known patterns to identify gaps the backlog may be missing.
 
+### nd and vlt Usage
+
+For nd CLI reference (commands, flags, dependencies, priorities), consult the nd skill:
+`Use skill nd`
+
+For vault operations, consult the vlt skill:
+`Use skill vlt`
+
+Do NOT guess nd flags or command syntax. Read the skill first.
+
+Use `pvg nd` (not bare `nd`) for all live tracker operations.
+
+**NEVER read `.vault/issues/` files directly** -- always use nd/pvg nd commands.
+
 ### 1) Load The Backlog/Epic
 
-If nd is available (**NEVER read `.vault/issues/` files directly** -- always use nd commands):
-
 ```bash
-nd show <epic-id>
-nd search "<epic-id>"
-nd dep tree <epic-id>
-nd ready
+pvg nd show <epic-id>
+pvg nd search "<epic-id>"
+pvg nd dep tree <epic-id>
+pvg nd ready
 ```
 
-nd diagnostic commands (read-only):
-- Visualize dependency DAG: nd graph / nd graph <epic-id>
-- Detect dependency cycles: nd dep cycles
-- Inspect dependency tree: nd dep tree <id>
-- Review execution path: nd path / nd path <id>
-- Vault health check: nd doctor
-- Find neglected issues: nd stale --days=14
-- Check milestone readiness: nd epic close-eligible
-- Backlog statistics: nd stats
+Key diagnostic commands (read-only):
+- Visualize dependency DAG: `pvg nd graph <epic-id>`
+- Detect dependency cycles: `pvg nd dep cycles`
+- Find neglected issues: `pvg nd stale --days=14`
+- Check milestone readiness: `pvg nd epic close-eligible`
 
 ### 2) Review For Predictable Failure Modes
 

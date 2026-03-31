@@ -1068,68 +1068,26 @@ Pre-execution priorities (checked before `pvg loop next --json`):
 Use `pvg story deliver|accept|reject` for state transitions. The orchestrator should not
 replay label choreography itself after an agent already completed the transition.
 
-## Required nd Operations
+## nd and vlt Usage
 
-### nd dependency commands (reference)
+For nd CLI reference (commands, flags, dependencies, priorities), consult the nd skill:
+`Use skill nd`
 
-Dependencies are managed by `pvg nd dep`, NOT by flags on `pvg nd update`:
+For vault operations, consult the vlt skill:
+`Use skill vlt`
 
-```bash
-pvg nd dep add A B          # A depends on B (B blocks A)
-pvg nd dep rm A B           # Remove dependency
-pvg nd dep list A           # List dependencies of A
-pvg nd dep tree A           # Show full dependency tree
-pvg nd dep cycles           # Detect circular dependencies
-```
+Do NOT guess nd flags or command syntax. Read the skill first.
 
-**Auto-cascade:** When a blocker is closed, nd automatically unblocks dependents.
-You do NOT need to manually run `pvg nd dep rm` after closing a blocker story.
+### Routing Rules (CRITICAL)
 
-**`pvg nd update` does NOT support `--remove-blocked-by` or `--add-blocked-by`.**
-These flags do not exist. Always use `pvg nd dep add` / `pvg nd dep rm` for dependency changes.
+Use `pvg nd` (not bare `nd`) for all live tracker operations.
 
-### nd flag gotchas
+**NEVER read `.vault/issues/` files directly** -- always use nd/pvg nd commands.
 
-**Priority is numeric, not P-prefixed.** nd displays `P0`..`P4` but the CLI
-accepts only the integer:
-
-```bash
-pvg nd create --priority 0    # correct (P0)
-pvg nd create --priority 2    # correct (P2)
-pvg nd create --priority P2   # WRONG -- "invalid syntax" error
-pvg nd update X --priority 1  # correct
-```
-
-**Dispatch decisions come from `pvg loop next --json` ONLY.** Do NOT use the queries
-below for choosing what to work on next -- they are unscoped and break epic containment.
-
-```bash
-pvg loop next --json   # SINGLE SOURCE OF TRUTH for dispatch decisions
-pvg nd prime           # Full project context
-pvg nd show <id>       # Full story context (allowed for reading before agent spawn)
-pvg nd show <id> --json # Check labels (allowed for hard-tdd detection, etc.)
-pvg nd stats           # Backlog statistics
-```
-
-The following are informational only -- never use them for dispatch:
-
-```bash
-pvg nd ready           # Unblocked work (UNSCOPED -- do not use for dispatch)
-pvg nd ready --parent <epic-id> --json # Scoped but pvg loop next is authoritative
-pvg nd list --status in_progress --label delivered --json  # Informational only
-pvg nd list --status open --label rejected --json          # Informational only
-```
-
-**nd filter cheat sheet** (prevents wasted queries with wrong flags):
-- Priority: `--priority 0` (not `--label P0` -- priority is not a label)
-- Labels: `--label delivered`, `--label rejected`, `--label hard-tdd`
-- Type: `--type bug`, `--type task`, `--type epic`
-- Parent: `--parent <epic-id>`
-
-As of nd v0.7.0, `nd ready` supports the same filter flags as `nd list`:
-`--parent`, `--status`, `--label`, `--type`, `--assignee`, `--priority`,
-`--no-parent`, `--sort`, `--reverse`, `--limit`, date range filters, `--json`.
-Run `nd <command> --help` if unsure about available flags.
+**Dispatch decisions come from `pvg loop next --json` ONLY.** Do NOT use `pvg nd ready`
+or `pvg nd list` for choosing what to work on next -- they are unscoped and break epic
+containment. You MAY use nd directly for reading story content, checking labels, bug
+triage routing, and epic auto-close checks.
 
 ## Invocation
 

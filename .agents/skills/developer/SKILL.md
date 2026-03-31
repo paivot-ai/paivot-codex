@@ -18,11 +18,21 @@ Optional:
 - `repo_root`: if not the current repo
 - `testing_cmds`: if the story specifies exact commands to run
 
-## Workflow
+## nd and vlt Usage
 
-Use `pvg nd` (or `nd --vault "$PAIVOT_ND_VAULT"` when that env var is provided) for live tracker operations. The live backlog must stay branch-independent across all worktrees.
+For nd CLI reference (commands, flags, dependencies, priorities), consult the nd skill:
+`Use skill nd`
+
+For vault operations, consult the vlt skill:
+`Use skill vlt`
+
+Do NOT guess nd flags or command syntax. Read the skill first.
+
+Use `pvg nd` (not bare `nd`) for all live tracker operations. The live backlog must stay branch-independent across all worktrees.
 
 **NEVER read `.vault/issues/` files directly** (via file reads or cat). Always use nd/pvg nd commands to access issue data -- nd manages content hashes, link sections, and history that raw reads can desync.
+
+## Workflow
 
 ### 0) Git Workflow (Trunk-Based Development)
 

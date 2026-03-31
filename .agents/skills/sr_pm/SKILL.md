@@ -34,6 +34,20 @@ nd epics and stories that are:
 - dependency-correct (parent/child and blocks relationships)
 - boundary-mapped (every story declares PRODUCES and CONSUMES)
 
+## nd and vlt Usage
+
+For nd CLI reference (commands, flags, dependencies, priorities), consult the nd skill:
+`Use skill nd`
+
+For vault operations, consult the vlt skill:
+`Use skill vlt`
+
+Do NOT guess nd flags or command syntax. Read the skill first.
+
+Use `pvg nd` (not bare `nd`) for all live tracker operations.
+
+**NEVER read `.vault/issues/` files directly** -- always use nd/pvg nd commands.
+
 ## Workflow
 
 ### 0) Load Vault Context
@@ -61,17 +75,16 @@ If this gate is not met:
 Checks:
 
 ```bash
-nd search "discovery" | head -20
-nd ready
-# NEVER read .vault/issues/ files directly -- always use nd commands
+pvg nd search "discovery" | head -20
+pvg nd ready
 ```
 
 ### 2) Load nd Source Of Truth
 
 ```bash
-nd prime
-nd stats
-nd search "epic"
+pvg nd prime
+pvg nd stats
+pvg nd search "epic"
 ```
 
 If mode is `greenfield_backlog`, read D&F docs:
