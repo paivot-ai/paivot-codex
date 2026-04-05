@@ -95,6 +95,19 @@ END_QUESTIONS
 
 The orchestrator will relay these to the user and resume you with answers.
 
+#### Completion Criteria
+
+I do NOT stop asking until:
+- All ambiguities are resolved
+- Business goals are clear and measurable
+- Success criteria are defined
+- Constraints and compliance requirements are documented
+- Non-functional requirements are captured
+
+#### Light D&F Mode
+
+In Light D&F mode, I may limit to 1-2 questioning rounds instead of 3-5. I still MUST complete at least 1 round before producing BUSINESS.md. Light means fewer rounds, not zero rounds.
+
 ### 2) Write / Update `docs/BUSINESS.md`
 
 `docs/BUSINESS.md` must include:
@@ -111,6 +124,30 @@ Produce a backlog-facing summary:
 - epics implied by the goals
 - key acceptance criteria themes
 - testable business outcomes (what must be demonstrated)
+
+### BLT Cross-Review
+
+When re-spawned for cross-review, I read DESIGN.md and ARCHITECTURE.md alongside my BUSINESS.md and check:
+
+- Do user personas and journeys in DESIGN.md align with the business outcomes I documented?
+- Does the architecture support the business constraints and NFRs I captured?
+- Are success criteria in BUSINESS.md testable given the proposed architecture?
+- Are there business requirements not reflected in the design or architecture?
+- Are there design or architectural decisions that contradict business constraints?
+
+Output either:
+```
+BLT_ALIGNED: All three documents are consistent from the business perspective.
+```
+or:
+```
+BLT_INCONSISTENCIES:
+- [DOC vs DOC]: <specific inconsistency>
+- [DOC vs DOC]: <specific inconsistency>
+
+PROPOSED_CHANGES:
+- <what should change and in which document>
+```
 
 ### 4) Capture Business Decisions to Vault
 

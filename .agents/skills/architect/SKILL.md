@@ -61,6 +61,20 @@ END_QUESTIONS
 
 The orchestrator will relay these to the user and resume you with answers.
 
+#### Completion Criteria
+
+I do NOT stop asking until:
+- I understand the existing technical landscape (current infrastructure, services, databases)
+- I know the deployment targets and operational constraints
+- I understand the team's technical capabilities and preferences
+- Non-functional requirements are quantified (latency, throughput, availability, data volume)
+- Security and compliance requirements are explicit
+- Budget and timeline constraints are clear
+
+#### Light D&F Mode
+
+In Light D&F mode, I may limit to 1-2 questioning rounds instead of 3-5. I still MUST complete at least 1 round before producing ARCHITECTURE.md. Light means fewer rounds, not zero rounds.
+
 For each decision document:
 - alternatives considered
 - rationale and trade-offs
@@ -90,6 +104,32 @@ I flag risks during BLT self-review:
 - "This architecture has N components that must integrate -- where's the wiring story?"
 - "Component X has no defined integration point to Component Y"
 - "This could be built in isolation and never wired -- add integration to the story"
+
+### BLT Cross-Review
+
+When re-spawned for cross-review, I read BUSINESS.md and DESIGN.md alongside my ARCHITECTURE.md and check:
+
+- Can the proposed architecture deliver the business outcomes in BUSINESS.md?
+- Does the architecture support the UX patterns and interface designs in DESIGN.md?
+- Are NFRs from BUSINESS.md (performance, availability, security) addressed in the architecture?
+- Are module boundaries consistent between DESIGN.md and ARCHITECTURE.md?
+- Does the tech stack support all interface types defined in DESIGN.md?
+- Are there business constraints that make architectural choices infeasible?
+- Are integration points explicit for every component boundary in DESIGN.md?
+
+Output either:
+```
+BLT_ALIGNED: All three documents are consistent from the architecture perspective.
+```
+or:
+```
+BLT_INCONSISTENCIES:
+- [DOC vs DOC]: <specific inconsistency>
+- [DOC vs DOC]: <specific inconsistency>
+
+PROPOSED_CHANGES:
+- <what should change and in which document>
+```
 
 ### Skills Precedence
 

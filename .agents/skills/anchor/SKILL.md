@@ -90,12 +90,21 @@ Backlog review targets:
 - no stale issues? (run `nd stale --days=14`)
 - **boundary map inconsistencies**: every CONSUMES reference must match a PRODUCES in an upstream story. Missing or mismatched interfaces = REJECTED
 - **Walking skeleton establishes ALL quality gate patterns?** The first story in an
-  epic sets the template. If it omits type specs, DLP integration, config patterns,
-  every subsequent story will propagate that gap. REJECTED if walking skeleton doesn't
-  establish patterns.
-- **CONSUMES includes API signatures?** Bare file paths without function signatures = REJECTED.
-- **Cross-cutting concerns reference existing modules?** Stories mentioning DLP/rate
-  limiting/audit must name the specific module and API in CONSUMES. Vague references = REJECTED.
+  epic sets the template that every subsequent developer will copy. If the walking
+  skeleton omits type specs, DLP integration, config registration, or other quality
+  gates, every subsequent story will propagate that gap. Verify the walking skeleton
+  story's ACs explicitly require establishing these patterns. REJECTED if walking
+  skeleton doesn't establish patterns.
+- **CONSUMES includes API signatures?** CONSUMES entries that name only a file path
+  (without function signatures and usage examples) are INSUFFICIENT. Developers are
+  ephemeral and cannot discover APIs on their own. Every CONSUMES entry for a cross-cutting
+  module (DLP, rate limiting, config, audit) must include the actual function call pattern.
+  Bare file paths = REJECTED.
+- **Cross-cutting concerns reference existing modules?** When ACs mention DLP scanning,
+  rate limiting, audit logging, or config registration, the story must name the specific
+  existing module and its API in the CONSUMES section. Stories that say "DLP scan content"
+  without pointing to the DLP module will cause developer failures. Vague cross-cutting
+  references = REJECTED.
 
 Milestone review targets:
 - "delivered" claims without proof
@@ -181,9 +190,15 @@ test output (not skipped, not gated behind env vars).
 ## Quality Gate Validation (Milestone Review)
 
 Verify ALL new modules meet quality gates:
-1. **@spec coverage:** Every public function in every new module must have @spec (or equivalent type annotations for the project's language).
-2. **Cross-cutting module integration:** Verify delivered code calls existing modules for DLP, rate limiting, etc.
-3. **Walking skeleton pattern propagation:** All modules follow patterns from the walking skeleton.
+1. **Type spec coverage:** Grep all new source files for public function definitions
+   and verify each has a type specification (e.g., @spec in Elixir, type annotations in
+   Python/TypeScript). Missing type specs is the #1 systemic developer gap.
+2. **Cross-cutting module integration:** For every story AC that mentions DLP,
+   rate limiting, audit logging, or config registration, verify the delivered code
+   calls the existing module (not an inline reimplementation or omission).
+3. **Walking skeleton pattern propagation:** Verify all modules in the epic follow
+   the same structural patterns established by the walking skeleton (module structure,
+   annotations, error handling patterns). Divergence suggests incomplete pattern copying.
 
 ## Hard-TDD Validation (Milestone Review)
 

@@ -108,6 +108,9 @@ If anything critical is missing: **REJECT** (do not "infer").
 
 ### Tier 3: Behavioral (LLM judgment)
 
+- User Intent: if the story has a USER INTENT section, evaluate whether the
+  implementation actually serves that intent -- not just whether AC checkboxes pass.
+  A story can pass every AC and still miss the point. When absent, skip this check.
 - Outcome Alignment: does the implementation match ACs precisely?
   For each acceptance criterion:
   - confirm the implementation matches the AC exactly

@@ -66,6 +66,7 @@ You NEVER:
 - Re-close stories that the PM-Acceptor already closed (it closes on acceptance -- just read its output)
 - Override, re-interpret, or bypass PM rejections -- if the PM rejected, the story goes back to the developer with the rejection feedback. You do not get to decide the rejection was "on a technicality" or "procedural." PM decisions are final.
 - Re-submit rejected stories for acceptance without developer rework
+- Call `pvg loop cancel` -- only the user can cancel the loop. You do not get to decide when to stop based on "context exhaustion," "productivity," "session length," or any other self-assessed risk.
 - Query nd globally for dispatch decisions (use `pvg loop next --json` instead)
 
 ### When a Developer Agent Fails
@@ -343,7 +344,10 @@ Do NOT skip this step. Do NOT rotate to the next epic before retro completes.
 
 **After retro**: if `epic_complete` included a `next_epic`, call
 `pvg loop rotate <next_epic>` to transition loop state, then continue.
-If no `next_epic`, the next `pvg loop next --json` returns `complete`.
+If no `next_epic` was provided (last epic), the completion gate is still
+MANDATORY -- run all four steps (e2e, Anchor, merge to main, retro) before
+allowing exit. The stop hook enforces this structurally: it blocks exit while
+the epic branch exists unmerged.
 
 ## Branch Management (Two-Level Model)
 
@@ -384,6 +388,8 @@ Developer receives a checkout on `story/STORY_ID`. They work in isolation,
 cannot accidentally push to epic or main.
 
 ### Story Merge (After PM Approves)
+
+**STRUCTURAL GATE:** `pvg guard` blocks `git merge story/*` unless the story is both labeled `accepted` and `closed` in nd. This is enforced by the PreToolUse hook in Paivot-managed repos. If the merge is blocked, let PM-Acceptor finish review first.
 
 **CRITICAL:** Merging is your IMMEDIATE next step after PM acceptance. Complete
 the merge (including conflict resolution) before moving to the next priority item.
@@ -459,6 +465,10 @@ Do not append descriptive suffixes.
 
 **Merge order:** If multiple stories are waiting to merge, process them in
 dependency order first, then priority order (P0 first) within each ready layer.
+Do NOT use `parent` for merge ordering: `parent` is epic containment, not the
+dependency graph. Use `pvg nd dep tree STORY_ID` and `pvg nd show STORY_ID --json`
+to inspect `blocked_by`, `blocks`, and `follows`; merge prerequisite stories
+before dependents.
 
 ## Worktree Lifecycle
 
@@ -939,12 +949,14 @@ The loop drains one epic at a time. Termination conditions:
 
 | Condition | Action |
 |-----------|--------|
-| No actionable epics remain | Allow exit |
+| No actionable epics remain AND epic branch merged | Allow exit, remove state |
 | Current epic blocked, no other epics | Allow exit |
-| Max iterations reached | Allow exit |
+| Max iterations reached | Allow exit, remove state |
 | Too many consecutive waits (3) | Allow exit |
 | Current epic has actionable work | Continue |
-| Current epic complete, next epic exists | Rotate, continue |
+| Current epic complete, next epic exists | Block exit, run completion gate, then `pvg loop rotate` and continue |
+| Current epic complete, NO next epic (last epic) | Block exit, run completion gate, then allow exit |
+| Epic branch exists but all stories closed | Block exit, run completion gate (stop hook enforces this structurally) |
 
 ### Live Demo (before session exit)
 
