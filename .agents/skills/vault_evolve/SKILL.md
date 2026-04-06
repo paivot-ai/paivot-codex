@@ -30,14 +30,17 @@ Review the conversation so far. Identify:
 
 Check which vault-backed content could be improved:
 
-### Agent prompts (methodology/)
+### Learned knowledge (patterns/, decisions/, debug/)
 
 ```bash
-vlt vault="Claude" files folder="methodology"
-vlt vault="Claude" read file="<Agent Name>" follow
+vlt vault="Claude" files folder="patterns"
+vlt vault="Claude" files folder="decisions"
+vlt vault="Claude" files folder="debug"
 ```
 
-Look for: instructions that were unclear, workflow steps that should be reordered, quality checks that should be added.
+Agent operational prompts are self-contained in skill .md files (not in the vault).
+To change agent behavior, update the skill file and commit to the repo.
+vault-evolve captures LEARNED KNOWLEDGE that agents can consult -- not operational rules.
 
 ### Skill content (conventions/)
 
