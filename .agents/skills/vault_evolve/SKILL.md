@@ -1,8 +1,8 @@
 ---
 name: vault_evolve
 description: >
-  Refine vault-backed content based on session experience. Review what happened,
-  identify improvements to agent prompts, skill content, or operating mode, and
+  Refine learned knowledge in vault based on session experience. Review what happened,
+  identify improvements to vault knowledge, skill content, or operating mode, and
   update the relevant vault notes. System-scoped notes get proposals; project-scoped
   notes get direct edits. Use when the user says "evolve vault", "refine vault",
   "improve vault notes", or after a significant session.
@@ -22,7 +22,7 @@ Review the current session's work and refine the vault notes that power Paivot. 
 
 Review the conversation so far. Identify:
 - What tasks were completed
-- What friction was encountered (agent prompts unclear, missing context, wrong defaults)
+- What friction was encountered (missing context, wrong defaults, unclear patterns)
 - What patterns emerged that should be codified
 - What decisions were made that should be recorded
 

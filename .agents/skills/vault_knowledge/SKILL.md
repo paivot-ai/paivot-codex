@@ -18,7 +18,7 @@ Shared across ALL projects. Cross-project knowledge only.
 
 | Folder        | Contains                        | Auto-Tag           |
 |---------------|---------------------------------|--------------------|
-| methodology/  | Agent prompts, Paivot workflow  | `#dev-tools/workflow` |
+| methodology/  | Paivot workflow and methodology | `#dev-tools/workflow` |
 | conventions/  | Operating mode, checklists      | `#dev-tools/workflow` |
 | decisions/    | Cross-project decisions         | Domain-based       |
 | patterns/     | Cross-project patterns          | Domain-based       |

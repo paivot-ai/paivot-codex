@@ -70,7 +70,7 @@ Show the current state and health of both the global Obsidian vault and the proj
    ### Global Vault (system scope)
    | Folder        | Count | Purpose                              |
    |---------------|-------|--------------------------------------|
-   | methodology/  | N     | Paivot methodology (agent prompts)   |
+   | methodology/  | N     | Paivot workflow and methodology      |
    | conventions/  | N     | Working conventions                  |
    | decisions/    | N     | Architectural decisions              |
    | patterns/     | N     | Reusable solutions                   |

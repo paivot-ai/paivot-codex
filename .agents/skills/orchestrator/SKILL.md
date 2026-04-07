@@ -141,7 +141,7 @@ If you see `fatal: Unable to read current working directory` or
 ### Infrastructure Context (MANDATORY before first developer spawn)
 
 Before spawning the first developer agent in a session, discover what infrastructure
-is available locally and include connection details in ALL developer agent prompts.
+is available locally and include connection details in ALL developer story context.
 
 **Discovery protocol:**
 1. `docker ps --format '{{.Names}} {{.Ports}}'` -- running containers
