@@ -35,15 +35,13 @@ nd epics and stories that are:
 - dependency-correct (parent/child and blocks relationships)
 - boundary-mapped (every story declares PRODUCES and CONSUMES)
 
-## nd and vlt Usage
+## Agent Operating Rules (CRITICAL)
 
-For nd CLI reference (commands, flags, dependencies, priorities), consult the nd skill:
-`Use skill nd`
-
-For vault operations, consult the vlt skill:
-`Use skill vlt`
-
-Do NOT guess nd flags or command syntax. Read the skill first.
+1. **Load the nd skill first:** Before running ANY nd commands, `Use skill nd`. This loads the full CLI reference including body editing, labels, dependencies, and status transitions. Never guess nd syntax.
+2. **Load the vlt skill for vault operations:** Before running ANY vlt commands, `Use skill vlt`. Never guess vlt syntax.
+3. **Never edit issue or vault files directly:** Use nd commands for issues, vlt commands for vault. Direct edits bypass locking/FSM validation.
+4. **Stop and alert on system errors:** If a tool fails or a command crashes, STOP and report to the orchestrator. Do NOT silently retry or work around errors.
+5. **Execute nd commands directly** -- do NOT return backlog designs as text for the orchestrator to execute. Create epics and stories yourself using pvg nd commands during your run.
 
 Use `pvg nd` (not bare `nd`) for all live tracker operations.
 
