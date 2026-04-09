@@ -361,6 +361,8 @@ REJECTED by the PM-Acceptor.
 - Do not close stories (closing is `pm_acceptor`).
 - Do not create bugs (bug creation is `sr_pm` work via Bug Triage Mode). Report bugs using `DISCOVERED_BUG:` blocks in your delivery notes.
 - Do not rely on external context not present in the story.
+- **NEVER remove your own worktree** -- the dispatcher handles worktree cleanup. Removing the worktree you are working in kills the session.
+- **Before completing, reset CWD:** Your LAST Bash command before returning results MUST be `cd <project_root>` (the project root from your prompt). This prevents CWD corruption in the parent session.
 
 ## Invocation
 
