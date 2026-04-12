@@ -97,7 +97,13 @@ The session is unrecoverable -- you must ask the user to restart Codex.
    Starting in v1.52.11, `pvg worktree remove` checks whether the caller's
    CWD is inside the target worktree. If so, it REFUSES the removal with:
    `REFUSED: CWD "..." is inside worktree "..." -- run 'cd ...' first.`
-   This catches cases where the `cd` prefix was forgotten.
+   v1.53.7 fixed a relative path resolution bug: when a relative path was
+   passed while CWD had already drifted inside the worktree, the guard
+   computed a doubly-nested wrong path and silently skipped the check.
+
+> **No PreToolUse guard in Codex:** Unlike Claude Code, Codex has no
+> PreToolUse hook, so there is no Layer 3 CWD guard. Layer 1 (`cd $PROJECT_ROOT &&`
+> prefix) is your primary defense. Never omit it.
 
 **Additional rules:**
 
@@ -511,7 +517,10 @@ cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/<worktree-name>
 `pvg worktree remove` resolves the project root from the worktree path (not CWD),
 runs `git worktree remove --force`, and prunes stale metadata. Starting in v1.52.11,
 it also **refuses** removal if the caller's CWD is inside the target worktree --
-preventing the session-killing CWD corruption bug.
+preventing the session-killing CWD corruption bug. v1.53.7 fixed a relative path
+resolution bug in this guard: when a relative path was passed while CWD had already
+drifted inside the worktree, `filepath.Abs` computed a doubly-nested wrong path and
+the guard silently skipped the check. Always prefer the `cd $PROJECT_ROOT &&` prefix.
 
 The `cd $PROJECT_ROOT &&` prefix is belt-and-suspenders: it resets CWD before
 removal, and `pvg worktree remove` catches it if you forget.
