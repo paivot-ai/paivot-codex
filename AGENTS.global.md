@@ -63,9 +63,9 @@ The Obsidian vault ("Claude") is the persistent knowledge layer:
 3. **Session end**: Update project index note
 
 ```bash
-vlt vault="Claude" search query="<project>"
-vlt vault="Claude" create name="<Title>" path="_inbox/<Title>.md" content="..." silent
-vlt vault="Claude" append file="projects/<project>" content="..."
+pvg notes search "<project>"
+pvg notes create "_inbox/<Title>.md" --title "<Title>" --body "..."
+pvg notes append "projects/<project>" --body "..."
 ```
 
 ## Concurrency Limits

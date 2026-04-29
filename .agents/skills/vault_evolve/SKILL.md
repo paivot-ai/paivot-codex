@@ -33,9 +33,9 @@ Check which vault-backed content could be improved:
 ### Learned knowledge (patterns/, decisions/, debug/)
 
 ```bash
-vlt vault="Claude" files folder="patterns"
-vlt vault="Claude" files folder="decisions"
-vlt vault="Claude" files folder="debug"
+pvg notes list --folder "patterns"
+pvg notes list --folder "decisions"
+pvg notes list --folder "debug"
 ```
 
 Agent operational prompts are self-contained in skill .md files (not in the vault).
@@ -45,7 +45,9 @@ vault-evolve captures LEARNED KNOWLEDGE that agents can consult -- not operation
 ### Skill content (conventions/)
 
 ```bash
-vlt vault="Claude" read file="Vault Knowledge Skill" follow
+pvg notes read "Vault Knowledge Skill"
+# TODO: pvg notes addresses by full path; if not at vault root use the full path.
+# The `follow` semantic has no pvg equivalent yet.
 ```
 
 Look for: capture patterns to update, search strategies that worked, frontmatter conventions that evolved.
@@ -53,7 +55,8 @@ Look for: capture patterns to update, search strategies that worked, frontmatter
 ### Operating mode (conventions/)
 
 ```bash
-vlt vault="Claude" read file="Session Operating Mode" follow
+pvg notes read "Session Operating Mode"
+# TODO: see note above about path vs. title and `follow`.
 ```
 
 Look for: instructions ignored (make explicit), useless checklist items, missing checklist items.
@@ -62,6 +65,7 @@ Look for: instructions ignored (make explicit), useless checklist items, missing
 
 ```bash
 vlt vault=".vault/knowledge" files
+# Project-local vault still uses vlt directly; pvg notes addresses the configured vault only.
 ```
 
 ### Promotion candidates (project -> system)
@@ -80,7 +84,7 @@ Criteria: validated across sessions, applies broadly, improves cross-project con
 **DO NOT modify the note directly.** Create a proposal:
 
 ```bash
-vlt vault="Claude" create name="Proposal -- <Target Note>" path="_inbox/Proposal -- <Target Note>.md" content="---
+pvg notes create "_inbox/Proposal -- <Target Note>.md" --title "Proposal -- <Target Note>" --body "---
 type: proposal
 scope: system
 target: \"<full vault path of target note>\"
@@ -105,7 +109,8 @@ created: <YYYY-MM-DD>
 <full content of the target note at time of proposal>
 
 ## Impact
-Affects all projects using <Target Note>." silent
+Affects all projects using <Target Note>."
+# (vlt-only `silent` flag dropped)
 ```
 
 Tell the user: "Created proposal for <note>. Run vault_triage to review and apply."
@@ -126,7 +131,7 @@ vlt vault=".vault/knowledge" append file="changelog" content="
 ### Promotion proposals (project -> system)
 
 ```bash
-vlt vault="Claude" create name="Promotion -- <Note Title>" path="_inbox/Promotion -- <Note Title>.md" content="---
+pvg notes create "_inbox/Promotion -- <Note Title>.md" --title "Promotion -- <Note Title>" --body "---
 type: proposal
 scope: system
 promotion_from: project
@@ -146,7 +151,8 @@ Project: <project-name>
 <why universally useful>
 
 ## Content
-<full content of the project-local note>" silent
+<full content of the project-local note>"
+# (vlt-only `silent` flag dropped)
 ```
 
 ## Step 4: Report Changes

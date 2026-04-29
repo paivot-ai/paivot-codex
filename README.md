@@ -75,7 +75,7 @@ make install-global CODEX_HOME=/path/to/codex-home
 
 ```bash
 vlt vaults
-vlt vault="Claude" search query=""
+pvg notes search ""
 ```
 
 ### 3. Trust the project you want Codex to use
@@ -229,7 +229,8 @@ Paivot does not treat branch-local issue files as the live queue.
 Use:
 
 ```bash
-pvg nd ...
+pvg issues ...   # provider-abstracted (works with nd or Linear)
+pvg nd ...       # nd-specific operations only (e.g. --append-notes, dep tree)
 ```
 
 Not:
@@ -242,7 +243,7 @@ for the live dispatcher flow.
 
 Why:
 
-- `pvg nd` resolves the shared vault from the repo's git common dir
+- `pvg issues` and `pvg nd` resolve the shared vault from the repo's git common dir
 - all worktrees see the same mutable backlog
 - story branches stay isolated for code, not for queue state
 

@@ -21,8 +21,8 @@ Required:
 If nd is available (**NEVER read `.vault/issues/` files directly** -- always use nd commands):
 
 ```bash
-nd show <epic-id>
-nd search "<epic-id>"
+pvg issues show <epic-id>
+pvg nd search "<epic-id>"   # nd-specific
 ```
 
 For each story, extract:
@@ -59,7 +59,7 @@ Produce:
 Write a structured retro note into the epic:
 
 ```bash
-nd update <epic-id> --append-notes "# Retrospective: <epic-id> - <Epic Title>
+pvg nd update <epic-id> --append-notes "# Retrospective: <epic-id> - <Epic Title>
 
 ## Source Stories
 - PROJ-...
@@ -82,17 +82,17 @@ nd update <epic-id> --append-notes "# Retrospective: <epic-id> - <Epic Title>
 Each actionable insight becomes a vault note with `actionable: pending` so the Sr PM can incorporate it into future stories:
 
 ```bash
-vlt vault="Claude" create name="<Insight Title>" \
-  path="_inbox/<Insight Title>.md" \
-  content="---\ntype: pattern\nscope: project\nproject: <project>\nstatus: active\nactionable: pending\ncreated: $(date +%Y-%m-%d)\n---\n\n# <Insight Title>\n\n## Context\n<what epic/story revealed this>\n\n## Insight\n<the learning>\n\n## Action\n<what should change in future work>" silent
+pvg notes create "_inbox/<Insight Title>.md" --title "<Insight Title>" \
+  --body "---\ntype: pattern\nscope: project\nproject: <project>\nstatus: active\nactionable: pending\ncreated: $(date +%Y-%m-%d)\n---\n\n# <Insight Title>\n\n## Context\n<what epic/story revealed this>\n\n## Insight\n<the learning>\n\n## Action\n<what should change in future work>"
+# (vlt-only `silent` flag dropped)
 ```
 
 For debug insights:
 
 ```bash
-vlt vault="Claude" create name="<Debug Title>" \
-  path="_inbox/<Debug Title>.md" \
-  content="---\ntype: debug\nscope: project\nproject: <project>\nstatus: active\nactionable: pending\ncreated: $(date +%Y-%m-%d)\n---\n\n# <Debug Title>\n\n## Symptoms\n<what was observed>\n\n## Root Cause\n<why it happened>\n\n## Fix\n<what resolved it>" silent
+pvg notes create "_inbox/<Debug Title>.md" --title "<Debug Title>" \
+  --body "---\ntype: debug\nscope: project\nproject: <project>\nstatus: active\nactionable: pending\ncreated: $(date +%Y-%m-%d)\n---\n\n# <Debug Title>\n\n## Symptoms\n<what was observed>\n\n## Root Cause\n<why it happened>\n\n## Fix\n<what resolved it>"
+# (vlt-only `silent` flag dropped)
 ```
 
 ### 5) UAT Script Generation (MANDATORY for Epic Retro)
@@ -132,8 +132,8 @@ Rules for UAT scripts:
 ### 6) Update Project Index
 
 ```bash
-vlt vault="Claude" append file="projects/<project>" \
-  content="## Retro: <epic-id> ($(date +%Y-%m-%d))\n- <key learnings summary>\n- <link to vault notes created>"
+pvg notes append "projects/<project>" \
+  --body "## Retro: <epic-id> ($(date +%Y-%m-%d))\n- <key learnings summary>\n- <link to vault notes created>"
 ```
 
 ## Outputs / Evidence

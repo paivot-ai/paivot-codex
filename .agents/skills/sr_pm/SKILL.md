@@ -54,9 +54,9 @@ Use `pvg nd` (not bare `nd`) for all live tracker operations.
 Search for prior knowledge before creating stories:
 
 ```bash
-vlt vault="Claude" search query="[type:decision] [project:<project>]"
-vlt vault="Claude" search query="[type:pattern] [status:active]"
-vlt vault="Claude" search query="[actionable:pending]"
+pvg notes search "[type:decision] [project:<project>]"
+pvg notes search "[type:pattern] [status:active]"
+pvg notes search "[actionable:pending]"
 ```
 
 If actionable pending notes exist from retros, incorporate them into upcoming stories.
@@ -74,16 +74,16 @@ If this gate is not met:
 Checks:
 
 ```bash
-pvg nd search "discovery" | head -20
-pvg nd ready
+pvg nd search "discovery" | head -20   # nd-specific
+pvg issues ready
 ```
 
 ### 2) Load nd Source Of Truth
 
 ```bash
-pvg nd prime
-pvg nd stats
-pvg nd search "epic"
+pvg issues prime
+pvg nd stats              # nd-specific
+pvg nd search "epic"      # nd-specific
 ```
 
 If mode is `greenfield_backlog`, read D&F docs:
@@ -239,9 +239,10 @@ Use judgment to apply it proactively; user can always remove it.
 **Story creation:**
 
 ```bash
-nd create "<Story Title>" -t story -p <priority> \
+# Note: -t story / --type and -p / --priority flags dropped (no provider-abstracted equivalent yet)
+pvg issues create "<Story Title>" \
   --parent <epic-id> \
-  -d "## Context (Embedded)
+  --body "## Context (Embedded)
 - Goal: ...
 - Non-goals: ...
 - Constraints: ...
@@ -296,10 +297,10 @@ nd dep add <blocked-id> <blocking-id> --type blocks
 ### 6) Label Stories Appropriately
 
 ```bash
-nd labels add <id> milestone-1
-nd labels add <id> walking-skeleton   # For end-to-end slices
-nd labels add <id> integration        # For wiring stories
-nd labels add <id> hard-tdd           # For Hard-TDD workflow
+pvg issues update <id> --add-label milestone-1
+pvg issues update <id> --add-label walking-skeleton   # For end-to-end slices
+pvg issues update <id> --add-label integration        # For wiring stories
+pvg issues update <id> --add-label hard-tdd           # For Hard-TDD workflow
 ```
 
 ### 7) Integration Audit (Mandatory)
@@ -422,12 +423,12 @@ The Anchor finding gaps is a failure of my rigor, not a normal part of the proce
 I MUST catch these myself. Before submitting the backlog for Anchor review, I run
 every check the Anchor would run:
 
-**Structural checks (run these nd commands):**
+**Structural checks (run these nd commands -- all nd-specific, kept on `pvg nd`):**
 ```bash
-nd dep cycles                    # MUST return zero cycles
-nd epic close-eligible           # MUST report all epics as sound
-nd graph <epic-id>               # Visually inspect dependency DAG
-nd stale --days=14               # No neglected issues
+pvg nd dep cycles                # MUST return zero cycles
+pvg nd epic close-eligible       # MUST report all epics as sound
+pvg nd graph <epic-id>           # Visually inspect dependency DAG
+pvg nd stale --days=14           # No neglected issues
 ```
 
 **Story-by-story audit (check EVERY story):**
@@ -503,7 +504,7 @@ ARCHITECTURE.md. Common divergence patterns to catch:
 ### 12) Mark Actionable Vault Notes as Incorporated
 
 ```bash
-vlt vault="Claude" property:set name="actionable" value="incorporated" file="<Note>"
+pvg notes property:set "<Note>" "actionable" "incorporated"
 ```
 
 ### Feedback Generalization Protocol
@@ -534,7 +535,7 @@ A bug that isn't worth P0 is a feature request or tech debt, not a bug.
 **Triage process:**
 
 1. Read the DISCOVERED_BUG report (title, context, affected files, source story)
-2. Review the current backlog: `nd list --type=epic --json` to understand epic structure
+2. Review the current backlog: `pvg nd list --type=epic --json` (--type is nd-specific) to understand epic structure
 3. Decide which epic the bug belongs under:
    - If the bug was discovered during an epic's execution and relates to that epic's scope, parent it there
    - If the bug affects a different subsystem, find or create the appropriate epic
@@ -542,11 +543,10 @@ A bug that isn't worth P0 is a feature request or tech debt, not a bug.
 4. Create the bug with FULL structure:
 
 ```bash
-nd create "<Bug title>" \
-  --type=bug \
-  --priority=0 \
+# Note: --type=bug and --priority=0 dropped (no provider-abstracted equivalent yet)
+pvg issues create "<Bug title>" \
   --parent=<epic-id> \
-  -d "## Context
+  --body "## Context
 <What was discovered and how it manifests>
 
 ## Root Cause (if known)

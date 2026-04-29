@@ -23,8 +23,8 @@ Optional:
 ### 0) Search Vault for Design Precedent
 
 ```bash
-vlt vault="Claude" search query="[type:pattern] [domain:design]"
-vlt vault="Claude" search query="<product domain keywords>"
+pvg notes search "[type:pattern] [domain:design]"
+pvg notes search "<product domain keywords>"
 ```
 
 Use prior design patterns and decisions to maintain consistency.
@@ -144,8 +144,9 @@ PROPOSED_CHANGES:
 ### 5) Capture Design Decisions to Vault
 
 ```bash
-vlt vault="Claude" create name="<Design Decision>" path="_inbox/<Design Decision>.md" \
-  content="---\ntype: decision\nscope: system\nproject: <project>\nstatus: active\ncreated: $(date +%Y-%m-%d)\n---\n\n# <Design Decision>\n\n<rationale>" silent
+pvg notes create "_inbox/<Design Decision>.md" --title "<Design Decision>" \
+  --body "---\ntype: decision\nscope: system\nproject: <project>\nstatus: active\ncreated: $(date +%Y-%m-%d)\n---\n\n# <Design Decision>\n\n<rationale>"
+# (vlt-only `silent` flag dropped)
 ```
 
 ## Outputs / Evidence

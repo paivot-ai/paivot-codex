@@ -16,7 +16,7 @@ Review notes in `_inbox/` and move them to the correct folders. Also check for o
 List all notes in `_inbox/`:
 
 ```bash
-vlt vault="Claude" files folder="_inbox" --json
+pvg notes list --folder "_inbox" --json
 ```
 
 If empty:

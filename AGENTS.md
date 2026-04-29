@@ -49,8 +49,8 @@ codex -p paivot_research
 The Paivot methodology uses an Obsidian vault named "Claude" for persistent knowledge:
 
 ```bash
-vlt vaults                           # Verify vault exists
-vlt vault="Claude" search query=""   # Test connectivity
+vlt vaults                           # Verify vault exists (no pvg equivalent yet)
+pvg notes search ""                  # Test connectivity
 ```
 
 ## Capabilities
@@ -208,7 +208,7 @@ See `docs/GIT_WORKFLOW.md` for detailed procedures and the shared-vault model.
 
 ## Using nd (Preferred) vs Paste Mode (Fallback)
 
-If nd is available, skills use `nd show`, `nd update`, `nd labels`, `nd ready`.
+If nd is available, skills use `pvg issues show`, `pvg issues update`, `pvg issues update --add-label/--remove-label`, `pvg issues ready`.
 
 If nd is not available, skills ask you to paste story text and you update manually.
 

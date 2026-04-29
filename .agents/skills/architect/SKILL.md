@@ -24,8 +24,8 @@ Optional:
 ### 0) Search Vault for Architectural Precedent
 
 ```bash
-vlt vault="Claude" search query="[type:decision] [project:<project>]"
-vlt vault="Claude" search query="[type:pattern] architecture"
+pvg notes search "[type:decision] [project:<project>]"
+pvg notes search "[type:pattern] architecture"
 ```
 
 Use prior architectural decisions to maintain consistency and avoid re-deciding resolved matters.
@@ -38,8 +38,8 @@ If repo docs exist, read:
 If nd is available, inspect related work (**NEVER read `.vault/issues/` files directly** -- always use nd commands):
 
 ```bash
-nd search "architecture"
-nd ready
+pvg nd search "architecture"   # nd-specific
+pvg issues ready
 ```
 
 ### 2) Make Architectural Decisions Explicit
@@ -140,8 +140,9 @@ decisions, check what skills are available and consult them for technology-speci
 ### 5) Capture Architectural Decisions to Vault
 
 ```bash
-vlt vault="Claude" create name="<Decision Title>" path="decisions/<Decision Title>.md" \
-  content="---\ntype: decision\nscope: system\nproject: <project>\nstatus: active\ncreated: $(date +%Y-%m-%d)\n---\n\n# <Decision Title>\n\n## Context\n<why>\n\n## Decision\n<what>\n\n## Alternatives\n<considered>\n\n## Trade-offs\n<tradeoffs>" silent
+pvg notes create "decisions/<Decision Title>.md" --title "<Decision Title>" \
+  --body "---\ntype: decision\nscope: system\nproject: <project>\nstatus: active\ncreated: $(date +%Y-%m-%d)\n---\n\n# <Decision Title>\n\n## Context\n<why>\n\n## Decision\n<what>\n\n## Alternatives\n<considered>\n\n## Trade-offs\n<tradeoffs>"
+# (vlt-only `silent` flag dropped)
 ```
 
 ## Outputs / Evidence

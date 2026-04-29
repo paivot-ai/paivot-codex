@@ -48,7 +48,7 @@ git checkout -b story/<story-id> origin/main
 If `story_id` is provided and `nd` is available:
 
 ```bash
-nd show <story-id>
+pvg issues show <story-id>
 ```
 
 Hard rule: **all context comes from the story itself** (requirements, scope, testing, constraints, rejection notes). If key context is missing, do not guess.
@@ -69,8 +69,8 @@ When neither phase is specified: normal mode (write both tests and code).
 Before implementing, search for relevant knowledge:
 
 ```bash
-vlt vault="Claude" search query="<key terms from story>"
-vlt vault="Claude" search query="[type:pattern] [project:<project>]"
+pvg notes search "<key terms from story>"
+pvg notes search "[type:pattern] [project:<project>]"
 ```
 
 Use any relevant patterns, decisions, or debug insights found.
@@ -96,7 +96,7 @@ pvg nd update <story-id> --status=blocked --append-notes "BLOCKED: Missing <spec
 ### 5) Claim The Story
 
 ```bash
-pvg nd update <story-id> --status=in_progress
+pvg issues update <story-id> --status=in_progress
 pvg nd update <story-id> --append-notes "## nd_contract
 status: in_progress
 
@@ -154,7 +154,7 @@ If you have been iterating on test fixes for more than 3 rounds without converge
 
 1. **Commit what you have** -- even if tests still fail
 2. **Mark delivered** with a note: `pvg nd update <id> --append-notes "CONTEXT_BUDGET: committed with N failing tests after M fix attempts. Failures: <summary>"`
-3. **Add the delivered label**: `pvg nd labels add <id> delivered`
+3. **Add the delivered label**: `pvg issues update <id> --add-label delivered`
 
 A committed partial delivery that the PM can review is infinitely more valuable than
 an uncommitted perfect implementation lost to context exhaustion. The dispatcher can
@@ -323,8 +323,9 @@ pvg story deliver <story-id>
 If you discovered a reusable pattern, made a non-obvious debugging breakthrough, or encountered a sharp edge:
 
 ```bash
-vlt vault="Claude" create name="<Title>" path="_inbox/<Title>.md" \
-  content="---\ntype: <pattern|debug|decision>\nscope: system\nproject: <project>\nstatus: active\ncreated: $(date +%Y-%m-%d)\n---\n\n# <Title>\n\n<content>" silent
+pvg notes create "_inbox/<Title>.md" --title "<Title>" \
+  --body "---\ntype: <pattern|debug|decision>\nscope: system\nproject: <project>\nstatus: active\ncreated: $(date +%Y-%m-%d)\n---\n\n# <Title>\n\n<content>"
+# (vlt-only `silent` flag dropped)
 ```
 
 Hard rule: **incomplete proof is an automatic rejection** by `pm_acceptor`.
