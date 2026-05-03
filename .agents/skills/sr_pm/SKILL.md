@@ -415,6 +415,90 @@ dispatcher to clarify before writing stories with unverified signatures.
 Do NOT proceed to Pre-Anchor Self-Check until every API signature in every
 story has been verified against source.
 
+### Mechanical Sweep (MANDATORY -- run BEFORE Pre-Anchor Self-Check)
+
+Five deterministic checks that catch the boring failures the Anchor predictably rejects: placeholder IDs that never got substituted, CONSUMES entries without contract lines, missing or extra e2e capstones, capstones that don't block their full epic, badly skewed decomposition. These are sequential-housekeeping defects, not creative defects -- and they are the leading cause of Anchor rejection. **If any sweep fails, fix it and re-run before submitting.**
+
+**Sweep 1 -- Placeholder ID substitution.**
+While authoring you may have used short placeholders (e.g. `im-01-projects`, `STORY-A`, `EPIC-AUTH`). After `pvg issues create` returns real tracker IDs, EVERY story body and dependency edge must reference real IDs.
+
+```bash
+# Capture all real IDs assigned by the tracker
+pvg nd list --json | jq -r '.[].id' > /tmp/real_ids.txt
+
+# Scan every story body for placeholder patterns that are NOT real IDs
+for id in $(cat /tmp/real_ids.txt); do
+  body=$(pvg nd show "$id" --json | jq -r '.body')
+  echo "$body" | grep -oE '\b([a-z]{2,}-[0-9]{2}-[a-z-]+|STORY-[A-Z]|EPIC-[A-Z][A-Z-]*)\b' \
+    | sort -u \
+    | while read tok; do
+        if ! grep -qx "$tok" /tmp/real_ids.txt; then
+          echo "POTENTIAL PLACEHOLDER in $id: $tok"
+        fi
+      done
+done
+```
+
+Any line printed must be resolved -- substitute the real ID via `pvg issues update <id> -d` or confirm the token is a documented external reference.
+
+**Sweep 2 -- CONSUMES carries a contract.**
+The "CONSUMES Must Include API Signatures" section above defines the required shape. This sweep is the deterministic cross-check that no story slipped through with a bare path-only reference.
+
+```bash
+pvg nd list --json | jq -r '.[].id' | while read id; do
+  body=$(pvg nd show "$id" --json | jq -r '.body')
+  echo "$body" | awk '
+    /^CONSUMES:/ {in_block=1; next}
+    in_block && /^- / {entry=$0; getline next_line; if (next_line !~ /->|spec|fields|endpoint|event|schema|::|=>/) print "MISSING SIGNATURE in '"$id"': " entry}
+    in_block && NF==0 {in_block=0}
+  '
+done
+```
+
+**Sweep 3 -- Exactly one e2e capstone per epic.**
+Every epic MUST have exactly one e2e capstone (title prefixed `E2e:`). Zero is a defect; many is also a defect.
+
+```bash
+for epic_id in $(pvg nd list --type epic --json | jq -r '.[].id'); do
+  capstone_count=$(pvg nd list --parent "$epic_id" --json | jq '[.[] | select(.title | startswith("E2e:"))] | length')
+  if [ "$capstone_count" != "1" ]; then
+    echo "DEFECT: epic $epic_id has $capstone_count e2e capstone(s) (expected 1)"
+  fi
+done
+```
+
+**Sweep 4 -- E2e capstone blocks every other story in its epic.**
+The capstone must depend on EVERY other story in the epic. A common defect is the capstone depending on only some stories, allowing the epic gate to "pass" with siblings still unfinished.
+
+```bash
+for epic_id in $(pvg nd list --type epic --json | jq -r '.[].id'); do
+  stories=$(pvg nd list --parent "$epic_id" --json | jq -r '.[].id')
+  capstone=$(pvg nd list --parent "$epic_id" --json | jq -r '.[] | select(.title | startswith("E2e:")) | .id')
+  [ -z "$capstone" ] && continue
+  capstone_blocks=$(pvg nd dep show "$capstone" --json | jq -r '.blocked_by[]?' | sort)
+  expected=$(echo "$stories" | grep -v "^$capstone$" | sort)
+  if [ "$capstone_blocks" != "$expected" ]; then
+    echo "DEFECT: capstone $capstone in epic $epic_id does not block_by every other story in the epic"
+    echo "  expected: $expected"
+    echo "  actual:   $capstone_blocks"
+  fi
+done
+```
+
+**Sweep 5 -- Decomposition balance.**
+Eyeball per-epic story counts. Significant imbalance (e.g., one epic with 14 stories, another with 2) is a flag, not necessarily a defect -- but you MUST justify it explicitly in the submission summary or the Anchor will rightly flag it.
+
+```bash
+pvg nd list --type epic --json | jq -r '.[].id' | while read epic_id; do
+  count=$(pvg nd list --parent "$epic_id" --json | jq 'length')
+  printf "%-12s %d stories\n" "$epic_id" "$count"
+done
+```
+
+If outliers exist, decide: (a) the small epic is under-decomposed -- split further; (b) scopes are genuinely different -- document the rationale in the submission summary; (c) the large epic is bundling concerns -- split it.
+
+**Submission gate:** Do NOT proceed to Pre-Anchor Self-Check until all five sweeps pass clean. If any sweep flags a false positive, document the rationale in the submission summary so the Anchor can verify your reasoning rather than re-flag it. (Terminology Audit -- see dedicated section -- is the sixth deterministic gate; run it as part of the same submission cycle.)
+
 ### 10) Pre-Anchor Self-Check (CRITICAL -- run BEFORE submitting to Anchor)
 
 The Anchor is an adversarial reviewer. If it finds issues, that means I missed them.
