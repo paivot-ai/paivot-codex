@@ -64,7 +64,7 @@ Ask: "Would this knowledge help someone on a DIFFERENT project with a DIFFERENT 
 Before creating, search for related notes:
 
 ```bash
-vlt vault="Claude" search query="<keywords from title>" --json
+pvg notes search "<keywords from title>" --json
 ```
 
 Present top 5 matches. ALWAYS include at least the project note as a related link.

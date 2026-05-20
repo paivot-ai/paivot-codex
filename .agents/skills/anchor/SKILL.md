@@ -35,9 +35,9 @@ No conditional passes. No negotiations. No open-ended questions.
 ### 0) Search Vault for Gap Detection Context
 
 ```bash
-vlt vault="Claude" search query="[type:pattern] walking skeleton"
-vlt vault="Claude" search query="[type:pattern] integration"
-vlt vault="Claude" search query="[type:convention] testing"
+pvg notes search "[type:pattern] walking skeleton"
+pvg notes search "[type:pattern] integration"
+pvg notes search "[type:convention] testing"
 ```
 
 Use known patterns to identify gaps the backlog may be missing.
@@ -59,10 +59,10 @@ Use `pvg nd` (not bare `nd`) for all live tracker operations.
 ### 1) Load The Backlog/Epic
 
 ```bash
-pvg nd show <epic-id>
-pvg nd search "<epic-id>"
-pvg nd dep tree <epic-id>
-pvg nd ready
+pvg issues show <epic-id>
+pvg nd search "<epic-id>"          # nd-specific
+pvg nd dep tree <epic-id>          # nd-specific
+pvg issues ready
 ```
 
 Key diagnostic commands (read-only):
@@ -135,7 +135,7 @@ VERDICT: <APPROVED|REJECTED|VALIDATED|GAPS_FOUND>
 If nd is available:
 
 ```bash
-nd update <epic-id> --append-notes "<paste review block>"
+pvg nd update <epic-id> --append-notes "<paste review block>"
 ```
 
 ## Issue Cap Per Round (CRITICAL)

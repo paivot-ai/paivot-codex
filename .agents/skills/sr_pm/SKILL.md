@@ -49,14 +49,59 @@ Use `pvg nd` (not bare `nd`) for all live tracker operations.
 
 ## Workflow
 
+### 0a) Load Project Hard Rules (MANDATORY before any other step)
+
+Projects encode **non-negotiable rules** the dispatcher and every agent must honor: "no mocks in integration tests", "no skip-if-missing", "always TDD", "no commits without passing CI", etc. These are not optional and not advisory. Source them from THREE places, in priority order. **Skipping this step means the project's own hard rules will not be enforced by your pre-flight, and the Anchor will catch them at extra cost.**
+
+Source 1: **Project-level `.vault/knowledge/conventions/*.md`** (Paivot-managed projects).
+Paivot-managed projects (any directory containing `.vault/issues/` or `.paivot/config.yaml`) keep project-specific rules as `scope: project` vault notes under `.vault/knowledge/conventions/`. Read every note there.
+
+Source 2: **Project root `AGENTS.md`** (Codex project methodology + repo-local CLAUDE.md fallback).
+Codex layers project `AGENTS.md` with the global; in this repo, `CLAUDE.md` is a thin redirect to `AGENTS.md`. Extract imperative rules from `AGENTS.md`.
+
+Source 3: **User global `~/.codex/AGENTS.md`** (always read).
+The user's personal universals -- testing pyramid, language conventions, communication preferences.
+
+```bash
+project_root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+
+# Source 1: project vault conventions (Paivot project case)
+conventions_dir="$project_root/.vault/knowledge/conventions"
+project_paivot=0
+if [ -d "$project_root/.vault/issues" ] || [ -f "$project_root/.paivot/config.yaml" ]; then
+  project_paivot=1
+  if [ -d "$conventions_dir" ]; then
+    for note in "$conventions_dir"/*.md; do
+      [ -f "$note" ] || continue
+      echo "=== convention: $(basename "$note") ==="
+      grep -nE '\b(no|always|must|never|MUST|NEVER|REQUIRED)\b' "$note"
+    done
+  fi
+fi
+
+# Source 2: project AGENTS.md
+if [ -f "$project_root/AGENTS.md" ]; then
+  echo "=== project AGENTS.md ==="
+  grep -nE '\b(no|always|must|never|MUST|NEVER|REQUIRED)\b' "$project_root/AGENTS.md" | head -50
+fi
+
+# Source 3: user global
+if [ -f ~/.codex/AGENTS.md ]; then
+  echo "=== user global AGENTS.md ==="
+  grep -nE '\b(no|always|must|never|MUST|NEVER|REQUIRED)\b' ~/.codex/AGENTS.md | head -50
+fi
+```
+
+Translate every imperative rule into a grep pattern and append to the project-specific `quality_gates` list referenced in the Anchor's Master Checklist (below). **Paivot-project precedence**: when a rule appears in both a project convention note and the global, the project note wins -- it is the project-scoped override.
+
 ### 0) Load Vault Context
 
 Search for prior knowledge before creating stories:
 
 ```bash
-vlt vault="Claude" search query="[type:decision] [project:<project>]"
-vlt vault="Claude" search query="[type:pattern] [status:active]"
-vlt vault="Claude" search query="[actionable:pending]"
+pvg notes search "[type:decision] [project:<project>]"
+pvg notes search "[type:pattern] [status:active]"
+pvg notes search "[actionable:pending]"
 ```
 
 If actionable pending notes exist from retros, incorporate them into upcoming stories.
@@ -74,16 +119,16 @@ If this gate is not met:
 Checks:
 
 ```bash
-pvg nd search "discovery" | head -20
-pvg nd ready
+pvg nd search "discovery" | head -20   # nd-specific
+pvg issues ready
 ```
 
 ### 2) Load nd Source Of Truth
 
 ```bash
-pvg nd prime
-pvg nd stats
-pvg nd search "epic"
+pvg issues prime
+pvg nd stats              # nd-specific
+pvg nd search "epic"      # nd-specific
 ```
 
 If mode is `greenfield_backlog`, read D&F docs:
@@ -239,9 +284,10 @@ Use judgment to apply it proactively; user can always remove it.
 **Story creation:**
 
 ```bash
-nd create "<Story Title>" -t story -p <priority> \
+# Note: -t story / --type and -p / --priority flags dropped (no provider-abstracted equivalent yet)
+pvg issues create "<Story Title>" \
   --parent <epic-id> \
-  -d "## Context (Embedded)
+  --body "## Context (Embedded)
 - Goal: ...
 - Non-goals: ...
 - Constraints: ...
@@ -296,10 +342,10 @@ nd dep add <blocked-id> <blocking-id> --type blocks
 ### 6) Label Stories Appropriately
 
 ```bash
-nd labels add <id> milestone-1
-nd labels add <id> walking-skeleton   # For end-to-end slices
-nd labels add <id> integration        # For wiring stories
-nd labels add <id> hard-tdd           # For Hard-TDD workflow
+pvg issues update <id> --add-label milestone-1
+pvg issues update <id> --add-label walking-skeleton   # For end-to-end slices
+pvg issues update <id> --add-label integration        # For wiring stories
+pvg issues update <id> --add-label hard-tdd           # For Hard-TDD workflow
 ```
 
 ### 7) Integration Audit (Mandatory)
@@ -417,7 +463,33 @@ story has been verified against source.
 
 ### Mechanical Sweep (MANDATORY -- run BEFORE Pre-Anchor Self-Check)
 
-Five deterministic checks that catch the boring failures the Anchor predictably rejects: placeholder IDs that never got substituted, CONSUMES entries without contract lines, missing or extra e2e capstones, capstones that don't block their full epic, badly skewed decomposition. These are sequential-housekeeping defects, not creative defects -- and they are the leading cause of Anchor rejection. **If any sweep fails, fix it and re-run before submitting.**
+Deterministic checks that catch the boring failures the Anchor predictably rejects: fabricated paths (brownfield work), placeholder IDs that never got substituted, CONSUMES entries without contract lines, missing or extra e2e capstones, capstones that don't block their full epic, badly skewed decomposition. These are sequential-housekeeping defects, not creative defects -- and they are the leading cause of Anchor rejection. **If any sweep fails, fix it and re-run before submitting.**
+
+**Sweep 0 -- Brownfield filesystem audit (MANDATORY when porting, migrating, refactoring, or extending existing code).**
+
+For brownfield work, **ARCHITECTURE.md is aspirational; the existing codebase is reality.** Fabricated paths and module names are the most common rejection cause. Every `path/file.ext` reference in a story body must resolve to a real file (or be marked as an explicit creation by THIS story in its PRODUCES block). Triggered when the repo has substantial history.
+
+```bash
+# Heuristic: more than a few hundred commits OR an explicit brownfield flag.
+commits=$(git log --oneline 2>/dev/null | wc -l)
+if [ "${commits:-0}" -gt 50 ] || [ "${BROWNFIELD:-0}" = "1" ]; then
+  for id in $(pvg issues list --json | jq -r '.[].id'); do
+    pvg issues show "$id" --json | jq -r '.body' \
+      | grep -oE '\b([a-zA-Z_][a-zA-Z0-9_]*/)+[a-zA-Z_][a-zA-Z0-9_]*\.(py|ts|tsx|js|ex|exs|go|rs|rb|java|kt|swift|c|cpp|h|hpp|sql|yml|yaml|json|toml|md)\b' \
+      | sort -u \
+      | while read path; do
+          # Allow if file exists OR if the story explicitly PRODUCES it
+          [ -e "$path" ] && continue
+          produces=$(pvg issues show "$id" --json | jq -r '.body' \
+            | awk '/^PRODUCES:/{inp=1;next} inp&&/^- /{print} inp&&NF==0{inp=0}')
+          echo "$produces" | grep -q "$path" && continue
+          echo "FABRICATED PATH in $id: $path (does not exist; not in PRODUCES)"
+        done
+  done
+fi
+```
+
+A path that appears in a story body without existing on disk AND without being declared in the story's PRODUCES block is a fabrication. Anchor will catch it; this sweep catches it first.
 
 **Sweep 1 -- Placeholder ID substitution.**
 While authoring you may have used short placeholders (e.g. `im-01-projects`, `STORY-A`, `EPIC-AUTH`). After `pvg issues create` returns real tracker IDs, EVERY story body and dependency edge must reference real IDs.
@@ -497,7 +569,27 @@ done
 
 If outliers exist, decide: (a) the small epic is under-decomposed -- split further; (b) scopes are genuinely different -- document the rationale in the submission summary; (c) the large epic is bundling concerns -- split it.
 
-**Submission gate:** Do NOT proceed to Pre-Anchor Self-Check until all five sweeps pass clean. If any sweep flags a false positive, document the rationale in the submission summary so the Anchor can verify your reasoning rather than re-flag it. (Terminology Audit -- see dedicated section -- is the sixth deterministic gate; run it as part of the same submission cycle.)
+**Submission gate:** Do NOT proceed to Pre-Anchor Self-Check until all sweeps pass clean (Sweep 0 brownfield audit + Sweeps 1-5 + Terminology Audit). If any sweep flags a false positive, document the rationale in the submission summary so the Anchor can verify your reasoning rather than re-flag it.
+
+### Anchor's Master Checklist (the bar you must clear)
+
+Before running Pre-Anchor Self-Check, internalize the Anchor's review criteria verbatim. Pre-flighting against this list in the Anchor's own language minimizes loop count -- the Anchor caps rejections at 5 issues per round in this priority order, so leaving a high-priority gap unfixed will re-trigger rejection no matter how clean the rest of the backlog is.
+
+1. **Context match with D&F docs.** Column names, HTTP headers, API fields, env vars, status codes, data types, component names -- exactly as ARCHITECTURE.md writes them. Brownfield: every path/file.ext reference must exist on disk OR appear in this story's PRODUCES.
+2. **Walking skeleton in every milestone epic, AND its AC explicitly require establishing ALL quality gate patterns** the project demands (@spec/typespecs, DLP integration, rate limiting, audit logging, config registration, error handling, plus any CLAUDE.md or convention-note hard rules extracted in step 0a).
+3. **Vertical slices, no horizontal layers.** Each story cuts through API → service → data → response and produces an observable user-facing outcome.
+4. **Stories atomic and INVEST-compliant.** No bundled scope (titles with " and ", "/"), no AC bloat.
+5. **E2e capstone in every epic, `blocked_by` every other story in that epic.** A capstone with missing dep edges could run before the work it integrates.
+6. **MANDATORY SKILLS section present in every story body** (even if "None identified").
+7. **External integration stories** carry the `external-integration` label, a non-automatable AC requiring real-endpoint verification, and **blocking config sub-tasks** (not doc notes) for any secret/env var the user must provision.
+8. **Boundary maps consistent.** Every CONSUMES entry references an upstream story (real tracker ID) that PRODUCES the named artifact.
+9. **CONSUMES entries carry API signatures** (`spec:` / `fields:` / `endpoint:` / `event:` / `schema:` / `source:` or inline signature). Bare file paths = REJECTED.
+10. **Cross-cutting concerns (DLP, rate-limit, audit, config) named in CONSUMES** with the specific existing module and its call pattern. AC say "DLP scans X" but no CONSUMES entry for the DLP module = REJECTED.
+11. **Zero dependency cycles, no stale issues** (>14 days idle).
+12. **Security/compliance addressed** per BUSINESS.md.
+13. **D&F coverage complete** (every D&F item has at least one story).
+
+Self-reject if you cannot tick every item. The Pre-Anchor Self-Check below walks the same criteria in actionable form; the master checklist is the bar you must clear.
 
 ### 10) Pre-Anchor Self-Check (CRITICAL -- run BEFORE submitting to Anchor)
 
@@ -506,12 +598,12 @@ The Anchor finding gaps is a failure of my rigor, not a normal part of the proce
 I MUST catch these myself. Before submitting the backlog for Anchor review, I run
 every check the Anchor would run:
 
-**Structural checks (run these nd commands):**
+**Structural checks (run these nd commands -- all nd-specific, kept on `pvg nd`):**
 ```bash
-nd dep cycles                    # MUST return zero cycles
-nd epic close-eligible           # MUST report all epics as sound
-nd graph <epic-id>               # Visually inspect dependency DAG
-nd stale --days=14               # No neglected issues
+pvg nd dep cycles                # MUST return zero cycles
+pvg nd epic close-eligible       # MUST report all epics as sound
+pvg nd graph <epic-id>           # Visually inspect dependency DAG
+pvg nd stale --days=14           # No neglected issues
 ```
 
 **Story-by-story audit (check EVERY story):**
@@ -574,6 +666,34 @@ nd stale --days=14               # No neglected issues
 Anchor rejections. Every rejection wastes tokens and time on a round-trip that
 I should have prevented.
 
+### 10b) Adversarial Self-Review (MANDATORY judgment pass)
+
+The Mechanical Sweep and Pre-Anchor Self-Check catch **mechanical** defects (placeholder IDs, missing signatures, miscounted capstones, fabricated paths, missing hard rules). They do NOT catch **judgment** defects -- "this walking skeleton looks too thin", "this scope exclusion is artificial", "the AC enumerate only the happy path". The Anchor catches those, but every Anchor finding costs a round-trip.
+
+**Before submitting, do one judgment pass yourself.** Read each story end-to-end while wearing the Anchor's hat. Mechanical sweeps run with `grep`; this pass runs in your head. Be honest -- the goal is to find what you would find if you had not authored these stories.
+
+For every story, answer the following in writing in your run summary (not in the story body):
+
+1. **Reality check (depth).** Does this story reference any file path, module name, function, env var, or external service that I have not personally verified exists? If yes, stop and verify with `git grep`, `ls`, or `pvg issues show`. Sweep 0 catches the path patterns; this pass catches constants, function names, and identifiers that did not match its regex.
+
+2. **Skeleton depth.** Re-read the walking skeleton. Does it actually exercise every layer end-to-end with non-trivial behavior, or is the AC a list of stubs? The Anchor asks: "Would a developer copying this pattern produce production-ready code, or shovelware?" If the skeleton's AC are "service responds 200", "endpoint registered", "config loaded" -- that is shovelware. Push for real behavior: "user submits X, receives Y validated against Z, stored in W, emits event V".
+
+3. **Scope honesty.** For each story, is anything I am calling "out of scope" actually a one-liner or small change in the same module and the same theme? The Anchor will flag artificial decomposition. If a small fix lives in code touched by this story and addresses the same theme, **include it**. The bar is: would a reasonable developer doing this work be surprised that the fix was not in scope? If yes, include.
+
+4. **Coverage enumeration.** Do the ACs enumerate every test scenario the developer must implement (happy path, validation failures, error paths, edge cases, security boundaries), or do they list only the happy path? Anchor will flag "tests pass" or "integration test passes" as vacuous. List the negative paths explicitly.
+
+5. **Project hard-rule compliance (re-check).** Re-read the project hard rules extracted in step 0a (vault conventions, project AGENTS.md, user global). For each story, does any AC, testing strategy, or implementation note violate one? Common violations: skip-if-missing tests, mocks in integration tests, "TODO: add tests later", tests gated on env vars.
+
+If any answer surfaces a defect, fix it before submitting. The goal is for the Anchor's first-pass finding count to drop substantially because you found the judgment defects yourself.
+
+**Document your self-review verdict in the submission summary** with one line per story:
+
+```
+<TIX-id>: self-review verdict = clean | fixed (description) | accepted with rationale (description)
+```
+
+This both forces the pass to actually happen and gives the Anchor (and the orchestrator) visibility that you did the work. A run summary without self-review verdicts is incomplete.
+
 ### 11) Terminology Audit (Mandatory -- run after all stories are created)
 
 After creating all stories, cross-reference every embedded technical term against
@@ -587,7 +707,7 @@ ARCHITECTURE.md. Common divergence patterns to catch:
 ### 12) Mark Actionable Vault Notes as Incorporated
 
 ```bash
-vlt vault="Claude" property:set name="actionable" value="incorporated" file="<Note>"
+pvg notes property:set "<Note>" "actionable" "incorporated"
 ```
 
 ### Feedback Generalization Protocol
@@ -618,7 +738,7 @@ A bug that isn't worth P0 is a feature request or tech debt, not a bug.
 **Triage process:**
 
 1. Read the DISCOVERED_BUG report (title, context, affected files, source story)
-2. Review the current backlog: `nd list --type=epic --json` to understand epic structure
+2. Review the current backlog: `pvg nd list --type=epic --json` (--type is nd-specific) to understand epic structure
 3. Decide which epic the bug belongs under:
    - If the bug was discovered during an epic's execution and relates to that epic's scope, parent it there
    - If the bug affects a different subsystem, find or create the appropriate epic
@@ -626,11 +746,10 @@ A bug that isn't worth P0 is a feature request or tech debt, not a bug.
 4. Create the bug with FULL structure:
 
 ```bash
-nd create "<Bug title>" \
-  --type=bug \
-  --priority=0 \
+# Note: --type=bug and --priority=0 dropped (no provider-abstracted equivalent yet)
+pvg issues create "<Bug title>" \
   --parent=<epic-id> \
-  -d "## Context
+  --body "## Context
 <What was discovered and how it manifests>
 
 ## Root Cause (if known)

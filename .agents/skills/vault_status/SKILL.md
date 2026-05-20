@@ -55,11 +55,12 @@ Show the current state and health of both the global Obsidian vault and the proj
 4. **Check for actionable knowledge** (retro insights awaiting incorporation):
    ```bash
    vlt vault=".vault/knowledge" search query="actionable: pending"
+   # Project-local vault still uses vlt directly; pvg notes addresses the configured vault only.
    ```
 
 5. **Check for pending proposals**:
    ```bash
-   vlt vault="Claude" search query="type: proposal"
+   pvg notes search "type: proposal"
    ```
 
 6. **Present the report**:

@@ -107,8 +107,8 @@ This reads `.beads/` data and creates corresponding nd issues in `.vault/issues/
 ### Vault Knowledge (not available in bd era)
 
 ```bash
-vlt vault="Claude" search query="<project>"     # Find prior knowledge
-vlt vault="Claude" create name="..." path="..." content="..." silent  # Capture insights
+pvg notes search "<project>"                              # Find prior knowledge
+pvg notes create "<path>" --title "..." --body "..."      # Capture insights
 ```
 
 ### spawn_agent Orchestration (not available in bd era)

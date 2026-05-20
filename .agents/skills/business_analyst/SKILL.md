@@ -25,8 +25,8 @@ Optional:
 Before asking questions, check what is already known:
 
 ```bash
-vlt vault="Claude" search query="[type:decision] [project:<project>]"
-vlt vault="Claude" search query="<domain keywords>"
+pvg notes search "[type:decision] [project:<project>]"
+pvg notes search "<domain keywords>"
 ```
 
 Use prior decisions and patterns to inform your questions and avoid re-asking resolved matters.
@@ -154,8 +154,9 @@ PROPOSED_CHANGES:
 If significant business decisions were made during discovery:
 
 ```bash
-vlt vault="Claude" create name="<Decision Title>" path="_inbox/<Decision Title>.md" \
-  content="---\ntype: decision\nscope: system\nproject: <project>\nstatus: active\ncreated: $(date +%Y-%m-%d)\n---\n\n# <Decision Title>\n\n## Context\n<why this decision was needed>\n\n## Decision\n<what was decided>\n\n## Alternatives\n<what was considered>" silent
+pvg notes create "_inbox/<Decision Title>.md" --title "<Decision Title>" \
+  --body "---\ntype: decision\nscope: system\nproject: <project>\nstatus: active\ncreated: $(date +%Y-%m-%d)\n---\n\n# <Decision Title>\n\n## Context\n<why this decision was needed>\n\n## Decision\n<what was decided>\n\n## Alternatives\n<what was considered>"
+# (vlt-only `silent` flag dropped)
 ```
 
 ## Outputs / Evidence

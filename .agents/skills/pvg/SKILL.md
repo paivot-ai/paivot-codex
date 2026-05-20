@@ -29,22 +29,22 @@ If `pvg` is missing or too old, stop and report that before trying to improvise 
 
 ## Core Rules
 
-1. Use `pvg nd ...` for live tracker operations so every worktree sees the same backlog.
+1. Use `pvg issues ...` (provider-abstracted) for live tracker operations so every worktree sees the same backlog. Use `pvg nd ...` only for nd-specific operations (e.g. `--append-notes`, `dep tree`, `epic close-eligible`).
 2. Use `pvg loop next --json` to decide what happens next in dispatcher flows.
 3. Use `pvg story deliver|accept|reject` for story transitions instead of managing labels/status by hand.
 4. Use `pvg story merge` for accepted story branches. Do not hand-merge from stale local state.
 5. Use `pvg loop recover` after compaction, crash, or orphaned worktrees. Do not hand-edit runtime state files.
 
-## Shared nd Routing
+## Shared Tracker Routing
 
 ```bash
-pvg nd root --ensure
-pvg nd ready --json
-pvg nd show PROJ-a1b --json
-pvg nd update PROJ-a1b --status=in_progress
+pvg nd root --ensure                            # nd-specific bootstrap
+pvg issues ready --json
+pvg issues show PROJ-a1b --json
+pvg issues update PROJ-a1b --status=in_progress
 ```
 
-`pvg nd` injects the correct shared `--vault` automatically. Do not pass `--vault` yourself.
+Both `pvg issues` and `pvg nd` inject the correct shared `--vault` automatically. Do not pass `--vault` yourself.
 
 ## Deterministic Next Action
 

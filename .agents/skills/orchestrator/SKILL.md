@@ -71,7 +71,7 @@ You NEVER:
 
 ### When a Developer Agent Fails
 If a developer agent fails, returns partial output, or times out:
-1. Check story status via `pvg nd show <STORY_ID> --json` (NOT by inspecting the worktree)
+1. Check story status via `pvg issues show <STORY_ID> --json` (NOT by inspecting the worktree)
 2. If NOT delivered: `cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/dev-<STORY_ID>`, re-spawn a fresh developer
 3. If delivered: `cd $PROJECT_ROOT && pvg worktree remove .claude/worktrees/dev-<STORY_ID>`, proceed with PM review
 4. NEVER cd into the worktree, inspect git log, or try to continue the agent
@@ -308,7 +308,7 @@ git branch -D epic/EPIC_ID
 
 **After** branch cleanup succeeds, close the epic in nd:
 ```bash
-pvg nd update EPIC_ID --status closed --add-label accepted
+pvg issues update EPIC_ID --status closed --add-label accepted
 ```
 
 Do NOT run nd updates in parallel with branch deletes. If the branch delete
@@ -482,7 +482,7 @@ Do not append descriptive suffixes.
 **Merge order:** If multiple stories are waiting to merge, process them in
 dependency order first, then priority order (P0 first) within each ready layer.
 Do NOT use `parent` for merge ordering: `parent` is epic containment, not the
-dependency graph. Use `pvg nd dep tree STORY_ID` and `pvg nd show STORY_ID --json`
+dependency graph. Use `pvg nd dep tree STORY_ID` (nd-specific) and `pvg issues show STORY_ID --json`
 to inspect `blocked_by`, `blocks`, and `follows`; merge prerequisite stories
 before dependents.
 
@@ -880,12 +880,12 @@ Verify activation succeeded before continuing.
 
 The loop drains one epic at a time. Each iteration, `pvg loop next --json` is the
 SINGLE SOURCE OF TRUTH for what happens next. Do NOT query nd directly with
-`pvg nd ready --json` or `pvg nd list --json` for choosing what to work on next.
+`pvg issues ready --json` or `pvg issues list --json` for choosing what to work on next.
 Those queries are unscoped and will return stories from ALL epics, breaking containment.
 
-You MAY use nd directly for:
-- Reading story content before spawning a developer (`pvg nd show STORY_ID`)
-- Checking story labels (`pvg nd show STORY_ID --json`)
+You MAY use the issues CLI directly for:
+- Reading story content before spawning a developer (`pvg issues show STORY_ID`)
+- Checking story labels (`pvg issues show STORY_ID --json`)
 - Bug triage routing (DISCOVERED_BUG blocks)
 - Epic auto-close checks after PM acceptance
 
@@ -1119,10 +1119,10 @@ Use `pvg nd` (not bare `nd`) for all live tracker operations.
 
 **NEVER read `.vault/issues/` files directly** -- always use nd/pvg nd commands.
 
-**Dispatch decisions come from `pvg loop next --json` ONLY.** Do NOT use `pvg nd ready`
-or `pvg nd list` for choosing what to work on next -- they are unscoped and break epic
-containment. You MAY use nd directly for reading story content, checking labels, bug
-triage routing, and epic auto-close checks.
+**Dispatch decisions come from `pvg loop next --json` ONLY.** Do NOT use `pvg issues ready`
+or `pvg issues list` for choosing what to work on next -- they are unscoped and break epic
+containment. You MAY use the issues CLI directly for reading story content, checking
+labels, bug triage routing, and epic auto-close checks.
 
 ## Invocation
 

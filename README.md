@@ -75,7 +75,7 @@ make install-global CODEX_HOME=/path/to/codex-home
 
 ```bash
 vlt vaults
-vlt vault="Claude" search query=""
+pvg notes search ""
 ```
 
 ### 3. Trust the project you want Codex to use
@@ -229,7 +229,8 @@ Paivot does not treat branch-local issue files as the live queue.
 Use:
 
 ```bash
-pvg nd ...
+pvg issues ...   # provider-abstracted (works with nd or Linear)
+pvg nd ...       # nd-specific operations only (e.g. --append-notes, dep tree)
 ```
 
 Not:
@@ -242,11 +243,21 @@ for the live dispatcher flow.
 
 Why:
 
-- `pvg nd` resolves the shared vault from the repo's git common dir
+- `pvg issues` and `pvg nd` resolve the shared vault from the repo's git common dir
 - all worktrees see the same mutable backlog
 - story branches stay isolated for code, not for queue state
 
 This is the key safety rule for concurrent multi-agent execution.
+
+### Convention: Paivot projects do not use a project-level `CLAUDE.md`
+
+A Paivot-managed project (any directory containing `.vault/issues/` or `.paivot/config.yaml`) deliberately has **no** project-level `CLAUDE.md`. The methodology lives in this repo's `AGENTS.md`; project-specific hard rules live as `scope: project` notes under `.vault/knowledge/conventions/`. A parallel `CLAUDE.md` would create two competing sources and rule duplication. The stub `CLAUDE.md` shipped in this repo only redirects to `AGENTS.md`; do not grow it.
+
+If you want to record a project-specific hard rule (e.g., "no skip-if-missing integration tests", "all migrations must be reversible"), write it as a `scope: project` note under `.vault/knowledge/conventions/`. The Sr PM's Phase 1 hard-rule ingestion (in the `sr_pm` skill) reads those notes automatically -- alongside the project `AGENTS.md` and your user global `~/.codex/AGENTS.md` -- and feeds them into the Anchor's Master Checklist quality gates.
+
+Recommended one-liner to add to your user global `~/.codex/AGENTS.md` (or `~/.claude/CLAUDE.md` for shared multi-host setups) so any session understands this convention:
+
+> **Paivot project detection.** If the working directory or any ancestor contains `.vault/issues/` or `.paivot/config.yaml`, treat it as a Paivot-managed project: do not create or expect a project-level `CLAUDE.md`. Project-specific conventions live under `.vault/knowledge/conventions/`; methodology lives in the Paivot vault and in the host repo's `AGENTS.md`; workflow is governed by the agent prompts (paivot-graph for Claude Code, paivot-codex for Codex, paivot-opencode for OpenCode). Hard rules that would normally live in a project `CLAUDE.md` belong as `scope: project` vault notes instead.
 
 ## Git Workflow
 

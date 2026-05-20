@@ -42,7 +42,7 @@ Use `pvg nd` (or `nd --vault "$PAIVOT_ND_VAULT"` when that env var is provided) 
 ### Phase 0: Load The Story
 
 ```bash
-pvg nd show <story-id>
+pvg issues show <story-id>
 ```
 
 Verify the story is in "delivered" state:
@@ -169,13 +169,13 @@ After accepting a story, check whether ALL siblings in the parent epic are now c
 
 ```bash
 # Get the parent epic
-PARENT=$(pvg nd show <story-id> --json | jq -r '.parent')
+PARENT=$(pvg issues show <story-id> --json | jq -r '.parent')
 
 # If story has a parent, check if all children are closed
 if [ -n "$PARENT" ] && [ "$PARENT" != "null" ]; then
   OPEN=$(pvg nd children $PARENT --json | jq '[.[] | select(.status != "closed")] | length')
   if [ "$OPEN" -eq 0 ]; then
-    pvg nd close $PARENT --reason="All stories accepted"
+    pvg issues close $PARENT --reason="All stories accepted"
   fi
 fi
 ```
@@ -226,8 +226,8 @@ Otherwise: use the **centralized model** (output block for Sr PM).
 
 PM-Acceptor creates bugs directly with mandatory guardrails:
 
-1. Get story's parent epic: `nd show <story-id> --json` (extract parent field)
-2. Check for duplicates: `nd list --label discovered-by-pm --parent <EPIC_ID>`
+1. Get story's parent epic: `pvg issues show <story-id> --json` (extract parent field)
+2. Check for duplicates: `pvg issues list --label discovered-by-pm --parent <EPIC_ID>`
    If similar bug exists, reopen it instead of creating new.
 3. Create bug:
    - Title: `Bug: <symptom>` (brief, specific)
@@ -264,7 +264,7 @@ placement, and dependency chain.
 - Do not manage the backlog (that is `sr_pm`).
 - Trust evidence when it is complete; do not re-run tests by default.
 - After accepting, always run epic auto-close check.
-- ACCEPT flow is TWO steps: `pvg nd labels add <id> accepted` THEN `pvg nd close <id> --reason=... --start=<next-id>`.
+- ACCEPT flow is TWO steps: `pvg issues update <id> --add-label accepted` THEN `pvg nd close <id> --reason=... --start=<next-id>` (`--start` is nd-specific, so this stays on `pvg nd`).
 
 ## Invocation
 
