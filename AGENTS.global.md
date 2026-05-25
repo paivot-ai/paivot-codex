@@ -79,6 +79,9 @@ Light stacks (Python, TS/JS): max 4 dev + 2 PM + 6 total.
 - `epic/<id>`: one branch per epic, created from `main`
 - `story/<id>`: one branch per story, created from its epic branch
 - Stories merge to epic after PM acceptance; epics merge to main after completion gate
+- Developer/conflict-fix agents run in dispatcher-managed story worktrees:
+  `.claude/worktrees/dev-<id>` checked out to `story/<id>`. Native
+  `worktree-agent-*` isolation is for PM/read-only review only.
 
 ## Skills
 

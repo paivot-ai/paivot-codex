@@ -161,6 +161,8 @@ Use those repo-local config patterns as a template for the projects where you ac
 When you invoke Paivot, the main Codex session becomes a dispatcher:
 
 - it asks `pvg loop next --json` what should happen next
+- it prepares one dispatcher-managed story worktree for every code-writing
+  developer or conflict-fix agent
 - it spawns the right specialized agent
 - it relays user-facing question blocks when needed
 - it uses `pvg story deliver|accept|reject` for tracker transitions
@@ -249,6 +251,26 @@ Why:
 
 This is the key safety rule for concurrent multi-agent execution.
 
+## Developer Worktree Isolation
+
+Code-writing agents must not share the dispatcher main worktree. Before spawning
+a Developer or Conflict-fix agent, create the story branch and a manual worktree:
+
+```bash
+git branch story/PROJ-a1b2 origin/main
+git worktree add .claude/worktrees/dev-PROJ-a1b2 story/PROJ-a1b2
+```
+
+Then include the absolute path in the agent prompt:
+
+```text
+Work in: /absolute/path/to/project/.claude/worktrees/dev-PROJ-a1b2
+```
+
+Native Codex/Agent worktree isolation can create automatic `worktree-agent-*`
+branches. Use that only for PM/read-only review. Developers must commit to the
+canonical `story/<id>` branch so the normal Paivot merge gate can see the work.
+
 ### Convention: Paivot projects do not use a project-level `CLAUDE.md`
 
 A Paivot-managed project (any directory containing `.vault/issues/` or `.paivot/config.yaml`) deliberately has **no** project-level `CLAUDE.md`. The methodology lives in this repo's `AGENTS.md`; project-specific hard rules live as `scope: project` notes under `.vault/knowledge/conventions/`. A parallel `CLAUDE.md` would create two competing sources and rule duplication. The stub `CLAUDE.md` shipped in this repo only redirects to `AGENTS.md`; do not grow it.
@@ -271,6 +293,7 @@ Typical flow:
 ```bash
 git fetch origin
 git checkout -b story/PROJ-a1b2 origin/main
+git worktree add .claude/worktrees/dev-PROJ-a1b2 story/PROJ-a1b2
 ```
 
 Developer agents implement on the story branch, record evidence in nd, and deliver through:
