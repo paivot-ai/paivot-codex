@@ -106,7 +106,7 @@ Recent Codex agent features make a few constraints more important:
 - If the task touches OpenAI APIs, ChatGPT apps, or Codex itself, use the `openaiDeveloperDocs` MCP server first when it is available.
 - Subagents inherit the parent session's approval and sandbox defaults. Do not assume spawned agents can bypass permissions the parent does not have.
 - Use `send_input` to continue an active agent. Reserve `resume_agent` for agents that were previously closed.
-- If a story requires an isolated branch or worktree, create it explicitly before handing execution to a developer. Do not assume Codex created the right checkout implicitly.
+- Every developer or conflict-fix subagent that writes tracked files must receive an explicit dispatcher-managed story worktree before execution. Create `story/<id>`, run `git worktree add .claude/worktrees/dev-<id> story/<id>`, and include `Work in: /abs/path/.claude/worktrees/dev-<id>` in the prompt. Do not rely on Codex/Agent implicit worktree isolation for code-writing developers; native `worktree-agent-*` isolation is for PM/read-only review only.
 - Break-glass remains operator-controlled: `pvg loop cancel` stops unattended execution and `pvg loop recover` is the only safe recovery path after interruption or compaction.
 - Use `pvg loop next --json` as the SINGLE SOURCE OF TRUTH for dispatch. It enforces epic containment -- never query nd globally for what to work on next.
 - Use `pvg story deliver|accept|reject` for tracker transitions instead of hand-managing labels and status swaps.
@@ -163,6 +163,17 @@ PM review gates: story branches merge to their epic branch only after PM-Accepto
 has accepted the story. Accepted means the story is both `closed` in nd and labeled
 `accepted`. Epic branches merge to main only after the completion gate (e2e tests +
 Anchor milestone review).
+
+Developer and conflict-fix agents must run in dispatcher-managed worktrees checked
+out to their story branch:
+
+```bash
+git worktree add .claude/worktrees/dev-<id> story/<id>
+```
+
+The dispatcher passes the absolute `Work in:` path to the agent. Native
+`worktree-agent-*` isolation is reserved for PM-Acceptor/read-only work because
+it does not put developer commits on `story/<id>`.
 
 See `docs/GIT_WORKFLOW.md` for detailed procedures and the shared-vault model.
 

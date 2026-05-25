@@ -32,7 +32,30 @@ git checkout -b story/STORY_ID origin/epic/EPIC_ID
 git push -u origin story/STORY_ID
 ```
 
-### 2. Implement and Commit
+### 2. Create Developer Worktree
+
+Before spawning a Developer or Conflict-fix agent, the dispatcher creates a
+manual worktree checked out to the story branch:
+
+```bash
+git worktree add .claude/worktrees/dev-STORY_ID story/STORY_ID
+```
+
+The agent prompt must include the absolute path:
+
+```text
+Work in: /absolute/path/to/repo/.claude/worktrees/dev-STORY_ID
+```
+
+For a parallel wave, create every story branch and every `dev-STORY_ID` worktree
+before spawning any developer. If setup fails for one story, stop and repair the
+wave; do not let developers share the dispatcher main worktree.
+
+Do not use native `worktree-agent-*` isolation for code-writing developers. It
+does not guarantee commits land on `story/STORY_ID`. Reserve it for PM/read-only
+review.
+
+### 3. Implement and Commit
 
 Always add specific files:
 
@@ -43,14 +66,14 @@ git commit -m "feat(STORY_ID): <description>"
 
 Never commit `.vault/` runtime state.
 
-### 3. Rebase Before Delivery
+### 4. Rebase Before Delivery
 
 ```bash
 git fetch origin
 git rebase origin/epic/EPIC_ID
 ```
 
-### 4. Push Story Branch
+### 5. Push Story Branch
 
 ```bash
 git push -u origin story/STORY_ID
@@ -165,18 +188,25 @@ Multiple developers can work on different story branches WITHIN the same epic
 at the same time:
 
 ```bash
-codex "Use skill developer. story_id=PROJ-a1b2."
-codex "Use skill developer. story_id=PROJ-c3d4."
+git worktree add .claude/worktrees/dev-PROJ-a1b2 story/PROJ-a1b2
+git worktree add .claude/worktrees/dev-PROJ-c3d4 story/PROJ-c3d4
+codex "Use skill developer. story_id=PROJ-a1b2. Work in: $PWD/.claude/worktrees/dev-PROJ-a1b2."
+codex "Use skill developer. story_id=PROJ-c3d4. Work in: $PWD/.claude/worktrees/dev-PROJ-c3d4."
 ```
 
 Each story merges to the epic branch after PM acceptance. All parallelization
 happens within the current epic -- never across epics.
+
+A post-fix parallel wave must not produce `-v2`/`-v3` collision-recovery branch
+suffixes, cross-agent staged files, or developer commits on `worktree-agent-*`
+branches.
 
 ## Dispatcher Responsibilities
 
 The orchestrator must:
 - create epic branches from `main`
 - create story branches from epic branches
+- create dispatcher-managed `dev-STORY_ID` worktrees before spawning developers
 - merge accepted story branches to their epic branch
 - run the epic completion gate (e2e + Anchor review)
 - merge epic branches to `main` (solo-dev) or create PRs (team)
