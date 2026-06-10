@@ -42,15 +42,37 @@ pvg nd root --ensure                            # nd-specific bootstrap
 pvg issues ready --json
 pvg issues show PROJ-a1b --json
 pvg issues update PROJ-a1b --status=in_progress
+pvg issues list --type epic --sort priority --json
+pvg issues blocked --json                       # blocked issues with blocker info
+pvg issues close PROJ-a1b --reason="Accepted: ..."
 ```
 
 Both `pvg issues` and `pvg nd` inject the correct shared `--vault` automatically. Do not pass `--vault` yourself.
+
+## Backlog Durability (Snapshots)
+
+```bash
+pvg nd sync               # Export the live vault to tracked .vault/backlog-snapshot/
+pvg nd restore            # Re-import the snapshot into an empty live vault (fresh clone)
+pvg nd restore --force    # Overwrite a non-empty live vault from the snapshot
+```
+
+The live nd vault lives under git-common-dir and is NOT part of git history --
+a fresh clone does not contain it. `pvg nd sync` runs at each epic completion
+gate; the orchestrator commits the snapshot on main. The snapshot is an export,
+never the live queue.
 
 ## Deterministic Next Action
 
 ```bash
 pvg loop next --json
+pvg loop next --json --n 4    # wave: up to 4 distinct-story actions (max 6)
 ```
+
+With `--n N`, the response carries an `actions` array of up to N distinct-story
+actions (at most one pm_review per wave, then developers from the rejected/ready
+queues); the `next` field still carries the first action. Use it to spawn a
+parallel developer wave within the concurrency limit.
 
 This is the SINGLE SOURCE OF TRUTH for dispatch decisions. In epic mode (the default),
 it NEVER falls through to the global backlog. It returns decisions scoped to the
@@ -123,18 +145,29 @@ Use dispatcher commands for Claude-path coordinator mode. Use settings for proje
 ## Structural Gates (Pre-Anchor)
 
 ```bash
-pvg rtm check    # Verify all tagged D&F requirements have covering stories
-pvg lint          # Check for artifact collisions (duplicate PRODUCES)
+pvg rtm check                        # Verify all tagged D&F requirements have covering stories
+pvg lint --backlog                   # Full backlog quality suite (collisions + structure)
+pvg lint --backlog --json            # Machine-parseable findings
+pvg lint --backlog --epic EPIC_ID    # Scope story-level checks to one epic
+pvg lint                             # Artifact-collision check only (subset of --backlog)
 ```
 
-These are mandatory before submitting a backlog to the Anchor. Both are deterministic
-checks with exit code 0 on success, 1 on failure:
+These are mandatory before submitting a backlog to the Anchor. Both are deterministic:
 
 - `pvg rtm check` reads BUSINESS.md, DESIGN.md, ARCHITECTURE.md for tagged requirements
   ([NEW], [EXPANDED], [CRITICAL], [REQUIRED], [CHANGED]) and checks each has a covering
   story in the backlog. Exit code 1 on uncovered requirements.
-- `pvg lint` scans all non-closed stories for PRODUCES blocks and flags any artifact
-  (file path) claimed by more than one story. Exit code 1 on collisions.
+- `pvg lint --backlog` runs the artifact-collision check PLUS the backlog structure
+  checks: walking-skeleton, capstone, mandatory-skills, consumes-signature,
+  consumes-produces, stale-refs, external-integration, atomicity, vertical-slice,
+  dep-cycles, release-gate, and paths-exist (brownfield only). Findings are `error`
+  (must fix; exit 1) or `review` (judgment flag; exit 0). The Anchor runs the same
+  linter FIRST and auto-rejects on any `error` finding.
+
+Lint behavior is tunable via settings: `lint.quality_gates` (extra pipe-separated
+patterns the walking-skeleton check requires in every skeleton's AC) and
+`lint.brownfield` (force the paths-exist check on, instead of the >50-commits
+heuristic).
 
 ## Vault And Guard Operations
 

@@ -32,7 +32,23 @@ No conditional passes. No negotiations. No open-ended questions.
 
 ## Workflow
 
-### 0) Search Vault for Gap Detection Context
+### 0) Mechanical Lint Gate (Backlog Review -- run FIRST)
+
+In `backlog_review` mode, before ANY manual review:
+
+```bash
+pvg lint --backlog
+```
+
+- If it reports ANY `error` finding: immediately return REJECTED with the lint
+  output verbatim. Do not spend tokens on manual review of things the linter
+  already caught -- lint-clean submissions are the Sr PM's responsibility.
+- If clean: proceed to judgment review ONLY. The linter owns the mechanical
+  checks (walking skeletons, capstones, CONSUMES signatures and round-trips,
+  atomicity, dependency cycles, external-integration structure); do not
+  re-derive them by hand.
+
+### 0b) Search Vault for Gap Detection Context
 
 ```bash
 pvg notes search "[type:pattern] walking skeleton"
@@ -73,31 +89,36 @@ Key diagnostic commands (read-only):
 
 ### 2) Review For Predictable Failure Modes
 
+Items marked **(lint-enforced: `<check>`)** are checked mechanically by
+`pvg lint --backlog` (step 0). For those, verify the linter ran clean -- do NOT
+re-derive them by hand. Judgment items remain yours.
+
 Backlog review targets:
 - any backlog/story decomposition attempted before D&F completion (BUSINESS/DESIGN/ARCHITECTURE not accepted)
-- missing walking skeletons (end-to-end slice exists early)
+- missing walking skeletons (end-to-end slice exists early) **(lint-enforced: `walking-skeleton`)**
 - missing horizontal concerns (auth, logging, error handling, observability, security)
 - missing integration wiring stories (components exist but never connect)
 - stories that are not self-contained (developer would need external context)
 - integration tests mandatory (no mocks)?
-- **e2e capstone story missing from epic?** Each epic must have an e2e test story that exercises the full system from the user's perspective, blocked by all other stories in the epic. If missing = REJECTED
+- **e2e capstone story missing from epic?** Each epic must have an e2e test story that exercises the full system from the user's perspective, blocked by all other stories in the epic. **(lint-enforced: `capstone`)**
 - dependency graph incoherence (parallel stories that will conflict, missing `blocks`)
-- stories are atomic and INVEST-compliant?
+- stories are atomic and INVEST-compliant? **(lint-enforced: `atomicity`)**
 - incorrect milestone labels (bidirectional check: every story has correct milestone label, every D&F item represented)
-- MANDATORY SKILLS section in every story?
+- MANDATORY SKILLS section in every story? **(lint-enforced: `mandatory-skills`)**
 - security/compliance addressed?
-- zero dependency cycles? (run `nd dep cycles`)
-- no stale issues? (run `nd stale --days=14`)
-- **boundary map inconsistencies**: every CONSUMES reference must match a PRODUCES in an upstream story. Missing or mismatched interfaces = REJECTED
+- zero dependency cycles? **(lint-enforced: `dep-cycles`)**
+- **boundary map inconsistencies**: every CONSUMES reference must match a PRODUCES in an upstream story. **(lint-enforced: `consumes-produces`)** Whether the named artifact is the RIGHT one is judgment.
 - **Walking skeleton establishes ALL quality gate patterns?** The first story in an
   epic sets the template that every subsequent developer will copy. If the walking
   skeleton omits type specs, DLP integration, config registration, or other quality
-  gates, every subsequent story will propagate that gap. Verify the walking skeleton
-  story's ACs explicitly require establishing these patterns. REJECTED if walking
-  skeleton doesn't establish patterns.
+  gates, every subsequent story will propagate that gap. Pattern PRESENCE is
+  lint-enforced (`walking-skeleton` + settings `lint.quality_gates`); whether the
+  ACs establish the patterns with real depth (not keyword stubs) is judgment.
+  If thin = REJECTED.
 - **CONSUMES includes API signatures?** CONSUMES entries that name only a file path
   (without function signatures and usage examples) are INSUFFICIENT. Developers are
-  ephemeral and cannot discover APIs on their own. Every CONSUMES entry for a cross-cutting
+  ephemeral and cannot discover APIs on their own. **(signature-line presence is
+  lint-enforced: `consumes-signature`)** Every CONSUMES entry for a cross-cutting
   module (DLP, rate limiting, config, audit) must include the actual function call pattern.
   Bare file paths = REJECTED.
 - **Cross-cutting concerns reference existing modules?** When ACs mention DLP scanning,
@@ -138,17 +159,45 @@ If nd is available:
 pvg nd update <epic-id> --append-notes "<paste review block>"
 ```
 
-## Issue Cap Per Round (CRITICAL)
+## Rule Cap Per Round (CRITICAL)
 
-Report a MAXIMUM of 5 issues per rejection round, prioritized by severity:
+Report a MAXIMUM of 10 distinct RULE violations per rejection round. The cap is
+on rules, NOT instances: for each rule, list ALL instances found plus the sweep
+scope. Capping instances fights feedback generalization; capping rules keeps
+rounds bounded while letting the Sr PM fix each rule globally in one pass.
+
+Prioritize rules by severity (see Severity Ladder below):
 1. Context divergence from D&F docs (wrong column names, header names, etc.)
 2. Missing walking skeletons or integration stories
 3. Horizontal layers instead of vertical slices
-4. Boundary map inconsistencies (CONSUMES without matching PRODUCES)
+4. Atomicity violations
 5. Everything else
 
-If more than 5 issues exist, report only the top 5 and note "additional issues likely
-remain." This forces iterative convergence: fix 5, resubmit, catch the next batch.
+If more than 10 rules are violated, report the top 10 and note "additional rule
+violations likely remain."
+
+## Severity Ladder
+
+| Severity | Meaning | Examples |
+|----------|---------|----------|
+| **critical** | Execution-breaking | Missing walking skeleton or capstone, dangling CONSUMES refs, fabricated paths, D&F context divergence |
+| **major** | Self-containment gaps | Missing API signatures, vague cross-cutting refs, missing external-integration structure |
+| **minor** | Style | Wording, decomposition balance, formatting |
+
+Decision rule: REJECT on any critical or 2+ major. APPROVE with minors noted
+otherwise.
+
+## Iteration Awareness
+
+I am told which round this is. On rounds 2+:
+- FIRST verify the previous rejection's issues were fixed AND generalized
+  (the Sr PM should have swept the whole backlog per rule, not just patched
+  the named instances)
+- Acknowledge improvements before noting remaining issues
+- If all previous critical/major issues are addressed and no NEW critical/major
+  issues exist, APPROVE even if minor items remain -- list them as advisory
+  notes in the approval
+- On round 3+, do NOT introduce new minor-severity findings as rejection grounds
 
 ## Rejection Format: State General Rules (CRITICAL)
 
@@ -171,6 +220,22 @@ SCOPE: Sweep all 6 epics in the backlog.
 
 This prevents the failure mode where the Sr PM fixes only the named instances
 and misses other violations of the same rule.
+
+## Boundary Reference Preflight (Milestone Review)
+
+Before judging delivery quality, verify the epic's boundary evidence resolves:
+
+1. For every issue ID appearing in CONSUMES entries, `blocked_by` edges, or
+   capstone evidence: confirm it resolves via `pvg issues show <id>` and that
+   the upstream producers are closed/accepted.
+2. Run `pvg nd dep cycles` -- a cycle introduced during execution invalidates
+   the epic's ordering evidence.
+3. Staleness is a Milestone Review concern (not Backlog Review -- a freshly
+   created backlog is never stale): run `pvg nd stale --days=14` and flag
+   stories idle more than 14 days.
+
+This encodes a field-learned check: milestone evidence has cited issue IDs that
+no longer resolved, and producers that were never accepted.
 
 ## E2e Test Existence (Milestone Review -- CRITICAL)
 

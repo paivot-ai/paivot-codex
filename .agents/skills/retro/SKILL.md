@@ -79,7 +79,15 @@ pvg nd update <epic-id> --append-notes "# Retrospective: <epic-id> - <Epic Title
 
 ### 4) Capture Learnings to Vault (Mandatory)
 
-Each actionable insight becomes a vault note with `actionable: pending` so the Sr PM can incorporate it into future stories:
+Each actionable insight becomes a vault note with `actionable: pending` so the Sr PM can incorporate it into future stories.
+
+For insights that belong in the PROJECT vault (`.vault/knowledge/` -- committed to main by the orchestrator after retro), write them via vlt targeting the project vault, into the appropriate subfolder (decisions/, patterns/, debug/, conventions/). Do not write the files directly -- vlt keeps frontmatter and vault integrity consistent:
+
+```bash
+vlt vault=".vault" create name="<Insight Title>" path="knowledge/patterns/<Insight Title>.md" content="..." silent
+```
+
+For system-vault capture (cross-project knowledge), use `pvg notes`:
 
 ```bash
 pvg notes create "_inbox/<Insight Title>.md" --title "<Insight Title>" \
@@ -127,7 +135,11 @@ Rules for UAT scripts:
 - Every expected result describes exactly what the user should see
 - Derived from the epic's stories, NOT from implementation details
 - Non-blocking: generate and include in the retro output, the user tests when convenient
-- Write to `.vault/knowledge/uat/` with the epic ID in the filename
+- Write to `.vault/knowledge/uat/` with the epic ID in the filename, via vlt targeting the project vault (never write the file directly):
+
+```bash
+vlt vault=".vault" create name="UAT <EPIC_ID>" path="knowledge/uat/UAT <EPIC_ID>.md" content="..." silent
+```
 
 ### 6) Update Project Index
 

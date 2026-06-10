@@ -379,6 +379,7 @@ Use the smallest escape hatch that solves the problem:
 | Recover after crash, compaction, or orphaned worktrees | `pvg loop recover` | Rebuilds recoverable loop state safely |
 | Inspect current backlog safely | `pvg nd stats` | Reads the shared live backlog |
 | Verify a delivered story before PM review | `pvg story verify-delivery <story-id>` | Checks whether the delivery proof block is structurally complete |
+| Recover the backlog after a fresh clone | `pvg nd restore` | Re-imports the tracked `.vault/backlog-snapshot/` into the live vault (`pvg nd sync` exports it) |
 
 Do not hand-edit loop state files or branch-local nd copies to recover a session.
 

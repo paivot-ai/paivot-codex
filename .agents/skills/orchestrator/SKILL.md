@@ -306,13 +306,30 @@ git push origin --delete epic/EPIC_ID
 git branch -D epic/EPIC_ID
 ```
 
-**After** branch cleanup succeeds, close the epic in nd:
+**After** branch cleanup succeeds, close the epic in nd. The label contract
+requires the epic to be closed BEFORE the `accepted` label is added -- two
+canonical steps, in this order:
 ```bash
-pvg issues update EPIC_ID --status closed --add-label accepted
+pvg issues close EPIC_ID --reason="All stories accepted, gate passed"
+pvg issues update EPIC_ID --add-label accepted
 ```
 
 Do NOT run nd updates in parallel with branch deletes. If the branch delete
 errors, parallel calls may be cancelled -- losing the nd update.
+
+**Then snapshot the backlog for git durability.** The live nd vault lives under
+git-common-dir and is NOT part of git history; `pvg nd sync` exports it into a
+tracked snapshot. Run it on main after every epic merge and commit the result:
+
+```bash
+pvg nd sync
+git add .vault/backlog-snapshot
+git commit -m "chore(paivot): backlog snapshot after EPIC_ID"
+git push origin main   # skip if local-only
+```
+
+(`pvg nd restore` re-imports the snapshot into an empty live vault after a
+fresh clone.)
 
 Then clean up all story branches for this epic:
 
@@ -358,16 +375,34 @@ Epic: EPIC_ID
 The retro agent is ephemeral -- it runs, captures knowledge, and is disposed.
 Do NOT skip this step. Do NOT rotate to the next epic before retro completes.
 
+**After retro completes**, commit any new `.vault/knowledge/` files it produced
+to main. Knowledge notes are tracked; runtime state under `.vault/` (issues,
+locks, guard logs) remains gitignored. Agents never commit `.vault/` files --
+this commit is the orchestrator's job, on main:
+
+```bash
+git add .vault/knowledge
+git commit -m "chore(paivot): retro knowledge for EPIC_ID"
+git push origin main   # skip if local-only
+```
+
 **After retro**: if `epic_complete` included a `next_epic`, call
 `pvg loop rotate <next_epic>` to transition loop state, then continue.
 If no `next_epic` was provided (last epic), the completion gate is still
 MANDATORY -- run all four steps (e2e, Anchor, merge to main, retro) before
-allowing exit. The stop hook enforces this structurally: it blocks exit while
-the epic branch exists unmerged.
+allowing exit. Codex has no stop hook to force this: do NOT end the session
+while the epic branch exists unmerged.
 
 ## Branch Management (Two-Level Model)
 
 Paivot uses a two-level branching strategy: `main -> epic -> story`.
+
+**`.vault/` tracking:** developers never stage anything under `.vault/` (see
+Git Hygiene in the developer skill). `.vault/knowledge/` and
+`.vault/backlog-snapshot/` ARE tracked, but they are committed only by the
+ORCHESTRATOR on main -- after retro and at the `pvg nd sync` snapshot step of
+the epic completion gate. Runtime state under `.vault/` (issues, locks, guard
+logs) stays gitignored.
 
 **Your responsibilities as dispatcher:**
 
@@ -405,7 +440,7 @@ cannot accidentally push to epic or main.
 
 ### Story Merge (After PM Approves)
 
-**STRUCTURAL GATE:** `pvg guard` blocks `git merge story/*` unless the story is both labeled `accepted` and `closed` in nd. This is enforced by the PreToolUse hook in Paivot-managed repos. If the merge is blocked, let PM-Acceptor finish review first.
+**MERGE GATE:** a story branch may be merged only when the story is both labeled `accepted` and `closed` in nd. `pvg story merge STORY_ID` enforces this deterministically -- prefer it. Codex has no PreToolUse hook to block a raw `git merge`, so if you merge manually as shown below, verify the accepted+closed state first. If the gate refuses, let PM-Acceptor finish review.
 
 **CRITICAL:** Merging is your IMMEDIATE next step after PM acceptance. Complete
 the merge (including conflict resolution) before moving to the next priority item.
@@ -807,7 +842,7 @@ for round in range(3):
 The post-D&F pipeline is three steps:
 
 ```
-Sr PM generates backlog -> pvg rtm check + pvg lint -> Anchor reviews
+Sr PM generates backlog -> pvg rtm check + pvg lint --backlog -> Anchor reviews
 ```
 
 The Sr PM and Anchor form a loop. The backlog is NOT ready until the Anchor returns APPROVED.
@@ -826,28 +861,31 @@ Create self-contained stories with all context embedded.
     close_agent(srpm_id)
 
     # Step 2: Structural gates (deterministic -- must pass before Anchor)
+    # pvg lint --backlog exits 1 on any `error` finding; `review` findings exit 0
     rtm_result = shell("pvg rtm check")
-    lint_result = shell("pvg lint")
+    lint_result = shell("pvg lint --backlog")
     if rtm_result.exit_code != 0 or lint_result.exit_code != 0:
         # Gates failed -- re-spawn Sr PM with gate failures (counts as same round)
         srpm_id = spawn_agent(prompt=f"""Use skill sr_pm.
 mode=fix_anchor_gaps.
 Structural gates failed. Fix these before Anchor review:
 pvg rtm check output: {rtm_result.output}
-pvg lint output: {lint_result.output}""")
+pvg lint --backlog output: {lint_result.output}""")
         wait(srpm_id)
         close_agent(srpm_id)
         # Re-check gates
         rtm_result = shell("pvg rtm check")
-        lint_result = shell("pvg lint")
+        lint_result = shell("pvg lint --backlog")
         if rtm_result.exit_code != 0 or lint_result.exit_code != 0:
             escalate_to_user("Structural gates still failing after Sr PM fix attempt.")
             break
 
-    # Step 3: Spawn Anchor
+    # Step 3: Spawn Anchor (tell it the round number -- it applies Iteration
+    # Awareness on rounds 2+)
     anchor_id = spawn_agent(prompt=f"""Use skill anchor.
 mode=backlog_review.
 epic_id={epic_id}.
+Round {round + 1} of 3.
 Review the backlog for gaps. Return APPROVED or REJECTED.""")
     anchor_result = wait(anchor_id)
     close_agent(anchor_id)
@@ -888,6 +926,22 @@ You MAY use the issues CLI directly for:
 - Checking story labels (`pvg issues show STORY_ID --json`)
 - Bug triage routing (DISCOVERED_BUG blocks)
 - Epic auto-close checks after PM acceptance
+
+### Wave Dispatch (multiple ready stories)
+
+When the current epic has multiple ready stories and the concurrency limit allows
+k more developers, request a wave instead of looping one action at a time:
+
+```bash
+pvg loop next --json --n k
+```
+
+This returns up to k distinct actions in an `actions` array (at most one
+pm_review per wave, then developers from the rejected/ready queues). The `next`
+field still carries the first action. Spawn one developer per entry in
+`actions[]` -- each gets its own story branch and dispatcher-managed worktree
+exactly as described under Story Branch Setup. The single-source-of-truth rule
+is unchanged: the wave comes from `pvg loop next`, never from unscoped nd queries.
 
 ```python
 while True:
@@ -979,7 +1033,7 @@ The loop drains one epic at a time. Termination conditions:
 | Current epic has actionable work | Continue |
 | Current epic complete, next epic exists | Block exit, run completion gate, then `pvg loop rotate` and continue |
 | Current epic complete, NO next epic (last epic) | Block exit, run completion gate, then allow exit |
-| Epic branch exists but all stories closed | Block exit, run completion gate (stop hook enforces this structurally) |
+| Epic branch exists but all stories closed | Block exit, run completion gate (no stop hook in Codex -- you must enforce this yourself; never end the session with an unmerged epic branch) |
 
 ### Live Demo (before session exit)
 

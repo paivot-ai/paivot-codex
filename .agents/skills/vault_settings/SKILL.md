@@ -14,6 +14,12 @@ Manage paivot-graph configuration for the current project. Settings are stored i
 ## Step 1: Load Current Settings
 
 ```bash
+pvg settings
+```
+
+If the pvg binary is not available, read the file directly:
+
+```bash
 cat .vault/knowledge/.settings.yaml 2>/dev/null || echo "not found"
 ```
 
@@ -34,6 +40,12 @@ architecture.c4: false           # C4 model alongside ARCHITECTURE.md
 dnf.specialist_review: false     # challenger review after each BLT document
 dnf.max_iterations: 3            # max creator-challenger loops before escalation
 bug_fast_track: false            # allow non-sr_pm agents to create bugs directly
+loop.persist_across_sessions: true  # loop state survives session boundaries (default true)
+lint.quality_gates:              # pipe-separated extra patterns the walking-skeleton
+                                 # check of `pvg lint --backlog` requires in every
+                                 # skeleton's AC (populated from Sr PM hard-rule ingestion)
+lint.brownfield: false           # force the paths-exist lint check on, regardless of
+                                 # the >50-commits heuristic
 ```
 
 ## Step 2: Present Current Configuration
@@ -42,7 +54,17 @@ Show the user a table of current settings with descriptions.
 
 ## Step 3: Apply Changes
 
-Edit `.vault/knowledge/.settings.yaml` directly. Create it if it doesn't exist:
+Prefer the pvg binary:
+
+```bash
+pvg settings <key>=<value>
+# Examples:
+pvg settings lint.brownfield=true
+pvg settings lint.quality_gates="no.skip.if.missing|no mocks? in integration"
+pvg settings loop.persist_across_sessions=false
+```
+
+If pvg is not available, edit `.vault/knowledge/.settings.yaml` directly. Create it if it doesn't exist:
 
 ```bash
 mkdir -p .vault/knowledge
@@ -51,6 +73,12 @@ mkdir -p .vault/knowledge
 yq -i '.workflow.fsm = true' .vault/knowledge/.settings.yaml 2>/dev/null || \
   sed -i '' 's/^workflow\.fsm:.*/workflow.fsm: true/' .vault/knowledge/.settings.yaml
 ```
+
+Setting-specific notes:
+
+- **`lint.quality_gates`**: pipe-separated grep patterns; `pvg lint --backlog` requires each pattern in every walking skeleton's AC, on top of its generic defaults. No side effects -- read at lint runtime.
+- **`lint.brownfield`**: `true` forces the `paths-exist` lint check on regardless of commit count; `false` falls back to the >50-commits heuristic.
+- **`loop.persist_across_sessions`**: `true` (default) keeps execution-loop state across session boundaries so a later session can resume the loop where it left off; `false` clears loop state on session exit, even if work remains.
 
 ## Step 4: Report
 

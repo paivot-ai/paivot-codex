@@ -96,7 +96,7 @@ For multi-agent work on multiple branches, the live nd backlog must be branch-in
 - Use `pvg nd ...` for all live tracker operations
 - `pvg nd` resolves the live vault from `git rev-parse --git-common-dir` and routes every nd command to the repo's shared git directory state
 - Do not use branch-local `.vault/issues/` as the live tracker
-- If you need a git artifact, snapshot the live vault explicitly (`nd archive`) instead of treating mutable branch checkouts as canonical
+- Durability: the live vault is not part of git history. `pvg nd sync` exports it to the tracked `.vault/backlog-snapshot/` (the orchestrator commits it on main at each epic completion gate); `pvg nd restore` re-imports the snapshot after a fresh clone. Never treat mutable branch checkouts as canonical
 
 ## Codex Agent Notes
 
@@ -108,7 +108,7 @@ Recent Codex agent features make a few constraints more important:
 - Use `send_input` to continue an active agent. Reserve `resume_agent` for agents that were previously closed.
 - Every developer or conflict-fix subagent that writes tracked files must receive an explicit dispatcher-managed story worktree before execution. Create `story/<id>`, run `git worktree add .claude/worktrees/dev-<id> story/<id>`, and include `Work in: /abs/path/.claude/worktrees/dev-<id>` in the prompt. Do not rely on Codex/Agent implicit worktree isolation for code-writing developers; native `worktree-agent-*` isolation is for PM/read-only review only.
 - Break-glass remains operator-controlled: `pvg loop cancel` stops unattended execution and `pvg loop recover` is the only safe recovery path after interruption or compaction.
-- Use `pvg loop next --json` as the SINGLE SOURCE OF TRUTH for dispatch. It enforces epic containment -- never query nd globally for what to work on next.
+- Use `pvg loop next --json` as the SINGLE SOURCE OF TRUTH for dispatch. It enforces epic containment -- never query nd globally for what to work on next. For a parallel developer wave, use `pvg loop next --json --n k` (returns up to k actions in an `actions` array).
 - Use `pvg story deliver|accept|reject` for tracker transitions instead of hand-managing labels and status swaps.
 
 ## Role Semantics

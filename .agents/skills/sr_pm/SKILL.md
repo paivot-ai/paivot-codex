@@ -92,7 +92,7 @@ if [ -f ~/.codex/AGENTS.md ]; then
 fi
 ```
 
-Translate every imperative rule into a grep pattern and append to the project-specific `quality_gates` list referenced in the Anchor's Master Checklist (below). **Paivot-project precedence**: when a rule appears in both a project convention note and the global, the project note wins -- it is the project-scoped override.
+Translate every imperative rule into a grep pattern and register the patterns in project settings: `pvg settings lint.quality_gates="<pattern1>|<pattern2>|..."` (pipe-separated). The `walking-skeleton` check in `pvg lint --backlog` (see Mechanical Lint Gate below) requires these patterns in every skeleton's AC, on top of its generic defaults. **Paivot-project precedence**: when a rule appears in both a project convention note and the global, the project note wins -- it is the project-scoped override.
 
 ### 0) Load Vault Context
 
@@ -335,8 +335,8 @@ Add the e2e capstone story for each epic, blocked by all other stories in the ep
 ### 5) Set Dependencies Explicitly
 
 ```bash
-nd dep add <child-id> <epic-id> --type parent-child
-nd dep add <blocked-id> <blocking-id> --type blocks
+pvg issues link <child-id> --child-of <epic-id>    # parent/child containment
+pvg nd dep add <blocked-id> <blocking-id>          # <blocked-id> depends on <blocking-id>
 ```
 
 ### 6) Label Stories Appropriately
@@ -363,17 +363,18 @@ rejection.
 ### 9) Run Structural Gates (MANDATORY before Anchor submission)
 
 ```bash
-pvg rtm check    # Verify all tagged D&F requirements have covering stories
-pvg lint          # Check for artifact collisions (duplicate PRODUCES)
+pvg rtm check          # Verify all tagged D&F requirements have covering stories
+pvg lint --backlog     # Full backlog quality suite -- see Mechanical Lint Gate below
 ```
 
-Both must pass. Fix any failures before proceeding. These are deterministic
-checks -- if they fail, the Anchor WILL reject the backlog for the same reason.
-**If `pvg lint` reports artifact collisions, see Collision Resolution below.**
+`pvg rtm check` must exit 0. `pvg lint --backlog` must exit clean of `error`
+findings. These are deterministic checks -- the Anchor runs the same linter
+FIRST and auto-rejects the backlog for the same reasons.
+**If lint reports `produces-collision` findings, see Collision Resolution below.**
 
 ### Artifact Collision Resolution
 
-When `pvg lint` reports collisions, multiple stories PRODUCE the same file path
+When `pvg lint --backlog` reports `produces-collision` findings, multiple stories PRODUCE the same file path
 without a recognized dependency chain. Lint understands chains -- if Story B has
 Story A in `blocked_by` or CONSUMES from Story A, they can both PRODUCE the same
 file (sequential modification). Lint walks transitive dependencies, so A -> B -> C
@@ -461,135 +462,72 @@ dispatcher to clarify before writing stories with unverified signatures.
 Do NOT proceed to Pre-Anchor Self-Check until every API signature in every
 story has been verified against source.
 
-### Mechanical Sweep (MANDATORY -- run BEFORE Pre-Anchor Self-Check)
+### Mechanical Lint Gate (MANDATORY -- run BEFORE Pre-Anchor Self-Check)
 
-Deterministic checks that catch the boring failures the Anchor predictably rejects: fabricated paths (brownfield work), placeholder IDs that never got substituted, CONSUMES entries without contract lines, missing or extra e2e capstones, capstones that don't block their full epic, badly skewed decomposition. These are sequential-housekeeping defects, not creative defects -- and they are the leading cause of Anchor rejection. **If any sweep fails, fix it and re-run before submitting.**
-
-**Sweep 0 -- Brownfield filesystem audit (MANDATORY when porting, migrating, refactoring, or extending existing code).**
-
-For brownfield work, **ARCHITECTURE.md is aspirational; the existing codebase is reality.** Fabricated paths and module names are the most common rejection cause. Every `path/file.ext` reference in a story body must resolve to a real file (or be marked as an explicit creation by THIS story in its PRODUCES block). Triggered when the repo has substantial history.
+The workflow above is creative and structural; **this gate is mechanical and deterministic.** It catches the boring failures the Anchor predictably rejects. Run the backlog linter:
 
 ```bash
-# Heuristic: more than a few hundred commits OR an explicit brownfield flag.
-commits=$(git log --oneline 2>/dev/null | wc -l)
-if [ "${commits:-0}" -gt 50 ] || [ "${BROWNFIELD:-0}" = "1" ]; then
-  for id in $(pvg issues list --json | jq -r '.[].id'); do
-    pvg issues show "$id" --json | jq -r '.body' \
-      | grep -oE '\b([a-zA-Z_][a-zA-Z0-9_]*/)+[a-zA-Z_][a-zA-Z0-9_]*\.(py|ts|tsx|js|ex|exs|go|rs|rb|java|kt|swift|c|cpp|h|hpp|sql|yml|yaml|json|toml|md)\b' \
-      | sort -u \
-      | while read path; do
-          # Allow if file exists OR if the story explicitly PRODUCES it
-          [ -e "$path" ] && continue
-          produces=$(pvg issues show "$id" --json | jq -r '.body' \
-            | awk '/^PRODUCES:/{inp=1;next} inp&&/^- /{print} inp&&NF==0{inp=0}')
-          echo "$produces" | grep -q "$path" && continue
-          echo "FABRICATED PATH in $id: $path (does not exist; not in PRODUCES)"
-        done
-  done
-fi
+pvg lint --backlog                   # human-readable findings
+pvg lint --backlog --json            # machine-parseable, for scripted iteration
+pvg lint --backlog --epic EPIC_ID    # scope to one epic while fixing
 ```
 
-A path that appears in a story body without existing on disk AND without being declared in the story's PRODUCES block is a fabrication. Anchor will catch it; this sweep catches it first.
+Exit 0 = clean. Findings carry one of two severities:
 
-**Sweep 1 -- Placeholder ID substitution.**
-While authoring you may have used short placeholders (e.g. `im-01-projects`, `STORY-A`, `EPIC-AUTH`). After `pvg issues create` returns real tracker IDs, EVERY story body and dependency edge must reference real IDs.
+- **`error`** -- must be fixed before submission. The Anchor runs the same linter FIRST and auto-rejects on ANY error finding. Iterate (fix, re-run) until ZERO errors remain.
+- **`review`** -- judgment flag. Either fix it, or justify it explicitly -- one line per finding -- in the submission summary so the Anchor can verify rather than re-flag.
 
-```bash
-# Capture all real IDs assigned by the tracker
-pvg nd list --json | jq -r '.[].id' > /tmp/real_ids.txt
+**Author correctly the FIRST time.** The linter is a gate, not a design tool -- lint-fixing after the fact wastes a pass and usually papers over a structural defect. Know what it checks and why, and write stories that pass on the first run:
 
-# Scan every story body for placeholder patterns that are NOT real IDs
-for id in $(cat /tmp/real_ids.txt); do
-  body=$(pvg nd show "$id" --json | jq -r '.body')
-  echo "$body" | grep -oE '\b([a-z]{2,}-[0-9]{2}-[a-z-]+|STORY-[A-Z]|EPIC-[A-Z][A-Z-]*)\b' \
-    | sort -u \
-    | while read tok; do
-        if ! grep -qx "$tok" /tmp/real_ids.txt; then
-          echo "POTENTIAL PLACEHOLDER in $id: $tok"
-        fi
-      done
-done
-```
+| Check | What it enforces | Why the rule exists |
+|---|---|---|
+| `produces-collision` | No two stories PRODUCE the same path without a dependency chain | Parallel developers writing the same file produce merge carnage (see Artifact Collision Resolution above) |
+| `walking-skeleton` | Present in every milestone epic; skeleton AC establish the quality-gate patterns (generic defaults plus project patterns from settings key `lint.quality_gates`) | The skeleton sets the template every downstream developer copies -- an omitted pattern propagates into every subsequent story |
+| `capstone` | Exactly one per epic, `blocked_by` every sibling | A capstone with missing dep edges could run before the work it integrates |
+| `mandatory-skills` | MANDATORY SKILLS section in every story (even if "None identified") | Ephemeral developers only know what the story tells them |
+| `consumes-signature` | Every CONSUMES entry carries a `spec:` / `fields:` / `endpoint:` / `event:` / `schema:` / `source:` line | Bare CONSUMES paths break ephemeral developers -- they cannot discover APIs on their own |
+| `consumes-produces` | Every CONSUMES ref resolves to an issue with a PRODUCES block | A dangling CONSUMES sends a developer hunting for an artifact nothing builds |
+| `stale-refs` | No unresolvable or placeholder issue IDs in bodies | Placeholders left over from authoring break dependency reasoning and dispatch |
+| `external-integration` | Label + non-automatable real-endpoint AC + blocking config sub-tasks | Mocked tests prove internal wiring, not operational readiness; untracked secrets stall the epic at its gate |
+| `atomicity` | No bundled titles (" and ", " / "), no stories with >12 AC | Bundled scope hides multi-story work; the Anchor will split it |
+| `vertical-slice` | No horizontal-layer titles; every story has an observable outcome | Horizontal layers work in isolation and break at system level |
+| `dep-cycles` | Zero dependency cycles | A cycle deadlocks the dispatch queue |
+| `release-gate` | At most one; `blocked_by` a capstone | A release gate pointed at a mid-stream story closes the milestone before the work it gates |
+| `paths-exist` | Brownfield only: every path referenced in a story body exists on disk or in a PRODUCES block (triggered by >50 commits or settings `lint.brownfield=true`) | Fabricated paths are the most common brownfield rejection cause -- the existing codebase is reality; ARCHITECTURE.md is aspirational |
 
-Any line printed must be resolved -- substitute the real ID via `pvg issues update <id> -d` or confirm the token is a documented external reference.
+> **Note for legacy projects (pre-lint backlogs).** The `walking-skeleton`,
+> `capstone`, and `release-gate` labels are net-new with this gate. On any
+> backlog created before it existed, `pvg lint --backlog` will report findings
+> for every epic and the release gate. This is expected, not a regression: do
+> a one-time labeling pass (assign `walking-skeleton` to the first integration
+> story in each epic, `capstone` to the demoable e2e story, `release-gate` to
+> the final acceptance story), then re-run the linter.
 
-**Sweep 2 -- CONSUMES carries a contract.**
-The "CONSUMES Must Include API Signatures" section above defines the required shape. This sweep is the deterministic cross-check that no story slipped through with a bare path-only reference.
+#### Manual judgment step: Terminology Audit (lint cannot do semantics)
 
-```bash
-pvg nd list --json | jq -r '.[].id' | while read id; do
-  body=$(pvg nd show "$id" --json | jq -r '.body')
-  echo "$body" | awk '
-    /^CONSUMES:/ {in_block=1; next}
-    in_block && /^- / {entry=$0; getline next_line; if (next_line !~ /->|spec|fields|endpoint|event|schema|::|=>/) print "MISSING SIGNATURE in '"$id"': " entry}
-    in_block && NF==0 {in_block=0}
-  '
-done
-```
+The linter does not know whether a story's identifiers match ARCHITECTURE.md. **Context divergence is the Anchor's #1 rejection cause**: column names, HTTP headers, API field names, env vars, status codes, data types, and component names in story bodies must match the source of truth verbatim -- a single renamed column causes Anchor rejection and cascading developer failures. Run step 11 (Terminology Audit) below before every submission. For brownfield work, the existing codebase is the source of truth: verify identifiers with `git grep` and `ls` (the `paths-exist` lint check covers file paths, but not function names, constants, or env vars).
 
-**Sweep 3 -- Exactly one e2e capstone per epic.**
-Every epic MUST have exactly one e2e capstone (title prefixed `E2e:`). Zero is a defect; many is also a defect.
-
-```bash
-for epic_id in $(pvg nd list --type epic --json | jq -r '.[].id'); do
-  capstone_count=$(pvg nd list --parent "$epic_id" --json | jq '[.[] | select(.title | startswith("E2e:"))] | length')
-  if [ "$capstone_count" != "1" ]; then
-    echo "DEFECT: epic $epic_id has $capstone_count e2e capstone(s) (expected 1)"
-  fi
-done
-```
-
-**Sweep 4 -- E2e capstone blocks every other story in its epic.**
-The capstone must depend on EVERY other story in the epic. A common defect is the capstone depending on only some stories, allowing the epic gate to "pass" with siblings still unfinished.
-
-```bash
-for epic_id in $(pvg nd list --type epic --json | jq -r '.[].id'); do
-  stories=$(pvg nd list --parent "$epic_id" --json | jq -r '.[].id')
-  capstone=$(pvg nd list --parent "$epic_id" --json | jq -r '.[] | select(.title | startswith("E2e:")) | .id')
-  [ -z "$capstone" ] && continue
-  capstone_blocks=$(pvg nd dep show "$capstone" --json | jq -r '.blocked_by[]?' | sort)
-  expected=$(echo "$stories" | grep -v "^$capstone$" | sort)
-  if [ "$capstone_blocks" != "$expected" ]; then
-    echo "DEFECT: capstone $capstone in epic $epic_id does not block_by every other story in the epic"
-    echo "  expected: $expected"
-    echo "  actual:   $capstone_blocks"
-  fi
-done
-```
-
-**Sweep 5 -- Decomposition balance.**
-Eyeball per-epic story counts. Significant imbalance (e.g., one epic with 14 stories, another with 2) is a flag, not necessarily a defect -- but you MUST justify it explicitly in the submission summary or the Anchor will rightly flag it.
-
-```bash
-pvg nd list --type epic --json | jq -r '.[].id' | while read epic_id; do
-  count=$(pvg nd list --parent "$epic_id" --json | jq 'length')
-  printf "%-12s %d stories\n" "$epic_id" "$count"
-done
-```
-
-If outliers exist, decide: (a) the small epic is under-decomposed -- split further; (b) scopes are genuinely different -- document the rationale in the submission summary; (c) the large epic is bundling concerns -- split it.
-
-**Submission gate:** Do NOT proceed to Pre-Anchor Self-Check until all sweeps pass clean (Sweep 0 brownfield audit + Sweeps 1-5 + Terminology Audit). If any sweep flags a false positive, document the rationale in the submission summary so the Anchor can verify your reasoning rather than re-flag it.
+**Submission gate:** Do NOT proceed to Pre-Anchor Self-Check until `pvg lint --backlog` exits clean of `error` findings and the Terminology Audit has passed. Every `review`-severity finding you chose not to fix must carry a one-line justification in the submission summary so the Anchor can verify your reasoning rather than re-flag it.
 
 ### Anchor's Master Checklist (the bar you must clear)
 
-Before running Pre-Anchor Self-Check, internalize the Anchor's review criteria verbatim. Pre-flighting against this list in the Anchor's own language minimizes loop count -- the Anchor caps rejections at 5 issues per round in this priority order, so leaving a high-priority gap unfixed will re-trigger rejection no matter how clean the rest of the backlog is.
+Before running Pre-Anchor Self-Check, internalize the Anchor's review criteria. **Items 2-11 are now mechanically enforced by `pvg lint --backlog`** -- the Anchor runs the same linter before any manual review, so a submission with lint errors is an automatic same-round rejection. For its judgment review, the Anchor caps each rejection round at 10 distinct rules (listing ALL instances per rule) and applies a severity ladder: REJECT on any critical or 2+ major findings. Items 1, 12, and 13 require judgment and remain YOUR manual responsibility, together with the Adversarial Self-Review (10b).
 
-1. **Context match with D&F docs.** Column names, HTTP headers, API fields, env vars, status codes, data types, component names -- exactly as ARCHITECTURE.md writes them. Brownfield: every path/file.ext reference must exist on disk OR appear in this story's PRODUCES.
-2. **Walking skeleton in every milestone epic, AND its AC explicitly require establishing ALL quality gate patterns** the project demands (@spec/typespecs, DLP integration, rate limiting, audit logging, config registration, error handling, plus any CLAUDE.md or convention-note hard rules extracted in step 0a).
-3. **Vertical slices, no horizontal layers.** Each story cuts through API → service → data → response and produces an observable user-facing outcome.
-4. **Stories atomic and INVEST-compliant.** No bundled scope (titles with " and ", "/"), no AC bloat.
-5. **E2e capstone in every epic, `blocked_by` every other story in that epic.** A capstone with missing dep edges could run before the work it integrates.
-6. **MANDATORY SKILLS section present in every story body** (even if "None identified").
-7. **External integration stories** carry the `external-integration` label, a non-automatable AC requiring real-endpoint verification, and **blocking config sub-tasks** (not doc notes) for any secret/env var the user must provision.
-8. **Boundary maps consistent.** Every CONSUMES entry references an upstream story (real tracker ID) that PRODUCES the named artifact.
-9. **CONSUMES entries carry API signatures** (`spec:` / `fields:` / `endpoint:` / `event:` / `schema:` / `source:` or inline signature). Bare file paths = REJECTED.
-10. **Cross-cutting concerns (DLP, rate-limit, audit, config) named in CONSUMES** with the specific existing module and its call pattern. AC say "DLP scans X" but no CONSUMES entry for the DLP module = REJECTED.
-11. **Zero dependency cycles, no stale issues** (>14 days idle).
-12. **Security/compliance addressed** per BUSINESS.md.
-13. **D&F coverage complete** (every D&F item has at least one story).
+1. **Context match with D&F docs** (judgment -- Terminology Audit, step 11). Column names, HTTP headers, API fields, env vars, status codes, data types, component names -- exactly as ARCHITECTURE.md writes them. Brownfield: every path/file.ext reference must exist on disk OR appear in this story's PRODUCES (lint: `paths-exist` covers the file paths; identifiers remain judgment).
+2. **Walking skeleton in every milestone epic, AND its AC explicitly require establishing ALL quality gate patterns** the project demands (@spec/typespecs, DLP integration, rate limiting, audit logging, config registration, error handling, plus any convention-note hard rules extracted in step 0a). (lint: `walking-skeleton` + settings `lint.quality_gates`; whether the AC establish the patterns with real depth is judgment)
+3. **Vertical slices, no horizontal layers.** Each story cuts through API → service → data → response and produces an observable user-facing outcome. (lint: `vertical-slice`)
+4. **Stories atomic and INVEST-compliant.** No bundled scope (titles with " and ", "/"), no AC bloat. (lint: `atomicity`)
+5. **E2e capstone in every epic, `blocked_by` every other story in that epic.** (lint: `capstone`)
+6. **MANDATORY SKILLS section present in every story body** (even if "None identified"). (lint: `mandatory-skills`)
+7. **External integration stories** carry the `external-integration` label, a non-automatable AC requiring real-endpoint verification, and **blocking config sub-tasks** (not doc notes) for any secret/env var the user must provision. (lint: `external-integration`)
+8. **Boundary maps consistent.** Every CONSUMES entry references an upstream story (real tracker ID) that PRODUCES the named artifact. (lint: `consumes-produces`)
+9. **CONSUMES entries carry API signatures** (`spec:` / `fields:` / `endpoint:` / `event:` / `schema:` / `source:` or inline signature). Bare file paths = REJECTED. (lint: `consumes-signature`)
+10. **Cross-cutting concerns (DLP, rate-limit, audit, config) named in CONSUMES** with the specific existing module and its call pattern. (lint: `consumes-signature` + `consumes-produces` enforce the structure; whether the named module is the RIGHT one is judgment -- yours)
+11. **Zero dependency cycles.** (lint: `dep-cycles`)
+12. **Security/compliance addressed** per BUSINESS.md (judgment -- yours, plus 10b).
+13. **D&F coverage complete** (every D&F item has at least one story) (judgment -- coverage checklist, plus 10b).
 
-Self-reject if you cannot tick every item. The Pre-Anchor Self-Check below walks the same criteria in actionable form; the master checklist is the bar you must clear.
+Self-reject if you cannot tick every item: lint clean of errors covers 2-11; manual passes cover 1, 12, and 13. The Pre-Anchor Self-Check below walks the same criteria in actionable form.
 
 ### 10) Pre-Anchor Self-Check (CRITICAL -- run BEFORE submitting to Anchor)
 
@@ -668,13 +606,13 @@ I should have prevented.
 
 ### 10b) Adversarial Self-Review (MANDATORY judgment pass)
 
-The Mechanical Sweep and Pre-Anchor Self-Check catch **mechanical** defects (placeholder IDs, missing signatures, miscounted capstones, fabricated paths, missing hard rules). They do NOT catch **judgment** defects -- "this walking skeleton looks too thin", "this scope exclusion is artificial", "the AC enumerate only the happy path". The Anchor catches those, but every Anchor finding costs a round-trip.
+The Mechanical Lint Gate and Pre-Anchor Self-Check catch **mechanical** defects (placeholder IDs, missing signatures, miscounted capstones, fabricated paths, missing hard rules). They do NOT catch **judgment** defects -- "this walking skeleton looks too thin", "this scope exclusion is artificial", "the AC enumerate only the happy path". The Anchor catches those, but every Anchor finding costs a round-trip.
 
-**Before submitting, do one judgment pass yourself.** Read each story end-to-end while wearing the Anchor's hat. Mechanical sweeps run with `grep`; this pass runs in your head. Be honest -- the goal is to find what you would find if you had not authored these stories.
+**Before submitting, do one judgment pass yourself.** Read each story end-to-end while wearing the Anchor's hat. The lint gate runs deterministically; this pass runs in your head. Be honest -- the goal is to find what you would find if you had not authored these stories.
 
 For every story, answer the following in writing in your run summary (not in the story body):
 
-1. **Reality check (depth).** Does this story reference any file path, module name, function, env var, or external service that I have not personally verified exists? If yes, stop and verify with `git grep`, `ls`, or `pvg issues show`. Sweep 0 catches the path patterns; this pass catches constants, function names, and identifiers that did not match its regex.
+1. **Reality check (depth).** Does this story reference any file path, module name, function, env var, or external service that I have not personally verified exists? If yes, stop and verify with `git grep`, `ls`, or `pvg issues show`. The `paths-exist` lint check catches some of these; this pass catches the ones lint cannot see (constants, function names, identifiers without file extensions).
 
 2. **Skeleton depth.** Re-read the walking skeleton. Does it actually exercise every layer end-to-end with non-trivial behavior, or is the AC a list of stubs? The Anchor asks: "Would a developer copying this pattern produce production-ready code, or shovelware?" If the skeleton's AC are "service responds 200", "endpoint registered", "config loaded" -- that is shovelware. Push for real behavior: "user submits X, receives Y validated against Z, stored in W, emits event V".
 
@@ -783,7 +721,7 @@ status: new
 - [ ] Pending implementation"
 ```
 
-5. Set dependency chain if the bug blocks other work: `nd dep add <blocked-story> <bug-id>`
+5. Set dependency chain if the bug blocks other work: `pvg nd dep add <blocked-story> <bug-id>`
 
 ## Branch-per-Epic
 

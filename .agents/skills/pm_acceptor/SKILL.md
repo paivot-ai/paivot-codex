@@ -175,7 +175,9 @@ PARENT=$(pvg issues show <story-id> --json | jq -r '.parent')
 if [ -n "$PARENT" ] && [ "$PARENT" != "null" ]; then
   OPEN=$(pvg nd children $PARENT --json | jq '[.[] | select(.status != "closed")] | length')
   if [ "$OPEN" -eq 0 ]; then
+    # Canonical two-step: the label contract requires closed BEFORE accepted
     pvg issues close $PARENT --reason="All stories accepted"
+    pvg issues update $PARENT --add-label accepted
   fi
 fi
 ```
@@ -264,7 +266,7 @@ placement, and dependency chain.
 - Do not manage the backlog (that is `sr_pm`).
 - Trust evidence when it is complete; do not re-run tests by default.
 - After accepting, always run epic auto-close check.
-- ACCEPT flow is TWO steps: `pvg issues update <id> --add-label accepted` THEN `pvg nd close <id> --reason=... --start=<next-id>` (`--start` is nd-specific, so this stays on `pvg nd`).
+- ACCEPT flow is TWO steps, in this order: `pvg nd close <id> --reason=... --start=<next-id>` THEN `pvg issues update <id> --add-label accepted` (closing first keeps the nd FSM compatible with the label contract; `--start` is nd-specific, so the close stays on `pvg nd`). `pvg story accept` performs both correctly in one command -- prefer it.
 
 ## Invocation
 

@@ -38,6 +38,7 @@ When multiple agents work in separate branches or worktrees, the mutable nd back
 - Resolve the live nd vault from the repository's git common dir
 - Use `pvg nd ...` (or equivalent `nd --vault <shared-path>`) for all live tracker operations
 - Treat git snapshots/archives as export artifacts, not the live queue
+- Durability: `pvg nd sync` exports the live vault to the tracked `.vault/backlog-snapshot/`; `pvg nd restore` re-imports it after a fresh clone
 
 ## Role Semantics
 

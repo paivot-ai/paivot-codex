@@ -35,7 +35,7 @@ Essential commands: `nd ready`, `nd create`, `nd show`, `nd update`, `nd close`,
 3. `nd start <id>` -- Claim work (alias for `nd update <id> --status=in_progress`)
 4. Work. Add notes as you go: `nd update <id> --append-notes "..."`
 5. `nd close <id> --reason="..."` -- Complete task (auto-unblocks dependents)
-6. Optional: `nd archive` or an explicit export if you want a git snapshot of the live backlog
+6. Optional: snapshot the live backlog for git durability. In Paivot projects use `pvg nd sync` (exports to tracked `.vault/backlog-snapshot/`; `pvg nd restore` re-imports after a fresh clone). Outside Paivot, `nd archive` produces a compressed snapshot
 
 ## Storage
 
