@@ -17,6 +17,24 @@ Required:
 Optional:
 - `epic_id`: if you need to file discovered issues as children of an epic
 
+## Operating Discipline (CRITICAL)
+
+- **Pin your shell context:** CWD may not persist between tool calls, and
+  Codex has no guard to catch drift. Never run `git checkout story/*` in the
+  main checkout -- inspect the delivered branch with
+  `git diff origin/epic/<EPIC>...origin/story/<ID>` and `git show`, or use a
+  dedicated worktree. Prefix shell commands with an explicit `cd`.
+- **Synchronous execution only:** you are ephemeral -- ending your turn
+  disposes you, and subagents are never re-invoked when background tasks
+  finish. Never background test runs; run verification synchronously with
+  explicit timeouts, splitting longer runs into stages.
+- **Landed-story reviews:** if the story's nd comments contain a
+  `loop: story branch already merged into <epic-branch>` note, the work was
+  merged by a prior session and there is NO fresh developer proof. Review
+  the LANDED code on the epic branch directly (diff the referenced merge
+  commit), run the verification ladder against it, and accept or reject on
+  that basis. Re-running tests IS expected here.
+
 ## Core Principle: Evidence-Based Review
 
 The developer's recorded proof in the story notes is the primary verification artifact.
@@ -30,6 +48,10 @@ Hard rules:
 
 If the story has `hard-tdd`, adjust review based on the dispatcher prompt phase:
 - **RED PHASE review**: "If these tests passed, would they prove the story is done?" Verify AC coverage, integration tests present, and contracts are clear. Tests may still be red.
+  - **RED outcome is NEVER accept/close.** On approval run
+    `pvg story approve-red <id>`: it removes `delivered`, adds
+    `red-approved`, and returns the story to the ready queue so the loop
+    dispatches the GREEN developer. On problems, REJECT normally.
 - **GREEN PHASE review**: Verify test files were NOT modified (git diff), all tests pass, then proceed with standard review. Test tampering = immediate rejection.
 - **No hard-tdd label**: standard review below.
 
@@ -163,21 +185,26 @@ pvg story accept <story-id> --reason "Accepted: <brief summary>" --next <next-id
 authoritative accepted contract. Story branches cannot be merged until the story is both
 labeled `accepted` and `closed`.
 
+After ANY decision (accept, reject, approve-red), VERIFY it landed:
+`pvg nd show <id>` must reflect the new status and labels. If it does not,
+your write went nowhere -- stop and report; do not let the orchestrator
+merge on a phantom acceptance.
+
 ### Epic Auto-Close (MANDATORY after every acceptance)
 
 After accepting a story, check whether ALL siblings in the parent epic are now closed:
 
 ```bash
 # Get the parent epic
-PARENT=$(pvg issues show <story-id> --json | jq -r '.parent')
+PARENT=$(pvg nd show <story-id> --json | jq -r '.parent')
 
 # If story has a parent, check if all children are closed
 if [ -n "$PARENT" ] && [ "$PARENT" != "null" ]; then
   OPEN=$(pvg nd children $PARENT --json | jq '[.[] | select(.status != "closed")] | length')
   if [ "$OPEN" -eq 0 ]; then
     # Canonical two-step: the label contract requires closed BEFORE accepted
-    pvg issues close $PARENT --reason="All stories accepted"
-    pvg issues update $PARENT --add-label accepted
+    pvg nd close $PARENT --reason="All stories accepted"
+    pvg nd update $PARENT --add-label accepted
   fi
 fi
 ```
@@ -266,7 +293,7 @@ placement, and dependency chain.
 - Do not manage the backlog (that is `sr_pm`).
 - Trust evidence when it is complete; do not re-run tests by default.
 - After accepting, always run epic auto-close check.
-- ACCEPT flow is TWO steps, in this order: `pvg nd close <id> --reason=... --start=<next-id>` THEN `pvg issues update <id> --add-label accepted` (closing first keeps the nd FSM compatible with the label contract; `--start` is nd-specific, so the close stays on `pvg nd`). `pvg story accept` performs both correctly in one command -- prefer it.
+- ACCEPT flow is TWO steps, in this order: `pvg nd close <id> --reason=... --start=<next-id>` THEN `pvg nd update <id> --add-label accepted` (closing first keeps the nd FSM compatible with the label contract; labels CAN be added while closed -- never reopen to label). `pvg story accept` performs both correctly in one command -- ALWAYS prefer it.
 
 ## Invocation
 

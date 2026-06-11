@@ -342,10 +342,10 @@ pvg nd dep add <blocked-id> <blocking-id>          # <blocked-id> depends on <bl
 ### 6) Label Stories Appropriately
 
 ```bash
-pvg issues update <id> --add-label milestone-1
-pvg issues update <id> --add-label walking-skeleton   # For end-to-end slices
-pvg issues update <id> --add-label integration        # For wiring stories
-pvg issues update <id> --add-label hard-tdd           # For Hard-TDD workflow
+pvg nd update <id> --add-label milestone-1
+pvg nd update <id> --add-label walking-skeleton   # For end-to-end slices
+pvg nd update <id> --add-label integration        # For wiring stories
+pvg nd update <id> --add-label hard-tdd           # For Hard-TDD workflow
 ```
 
 ### 7) Integration Audit (Mandatory)

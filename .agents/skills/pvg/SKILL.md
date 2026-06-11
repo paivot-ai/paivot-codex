@@ -41,10 +41,10 @@ If `pvg` is missing or too old, stop and report that before trying to improvise 
 pvg nd root --ensure                            # nd-specific bootstrap
 pvg issues ready --json
 pvg issues show PROJ-a1b --json
-pvg issues update PROJ-a1b --status=in_progress
+pvg story claim PROJ-a1b
 pvg issues list --type epic --sort priority --json
 pvg issues blocked --json                       # blocked issues with blocker info
-pvg issues close PROJ-a1b --reason="Accepted: ..."
+pvg story accept PROJ-a1b --reason "Accepted: ..."
 ```
 
 Both `pvg issues` and `pvg nd` inject the correct shared `--vault` automatically. Do not pass `--vault` yourself.
