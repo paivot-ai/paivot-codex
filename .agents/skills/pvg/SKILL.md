@@ -98,6 +98,8 @@ pvg story deliver PROJ-a1b
 pvg story accept PROJ-a1b --reason "Accepted: ..." --next PROJ-a1c
 pvg story reject PROJ-a1b --feedback "EXPECTED: ... DELIVERED: ... GAP: ... FIX: ..."
 pvg story verify-delivery PROJ-a1b
+pvg story approve-red PROJ-a1b
+pvg story verify-tdd --base origin/epic/PROJ-epic
 pvg story merge PROJ-a1b
 ```
 
@@ -107,6 +109,8 @@ These commands own the Paivot delivery contract:
 - `accept` applies `accepted`, closes the story, and appends the accepted contract
 - `reject` returns the story to `open`, swaps `delivered` for `rejected`, and appends the rejected contract
 - `verify-delivery` checks whether the proof block is complete enough for PM review
+- `approve-red` (hard-TDD only) removes `delivered`, adds `red-approved`, and returns the RED story to the ready queue so the loop dispatches the GREEN developer; a RED story is never closed or accepted
+- `verify-tdd` is the structural hard-TDD guard: against `--range A..B` or `--base REF` (merge-base..HEAD) it fails when a non-RED, unauthorized commit **modifies or deletes** an existing test file. Adding a brand-new test file is always allowed (a pure addition cannot weaken the frozen RED tests). A RED commit carries the `tdd-red` marker; a sanctioned repair carries `[test-edit-authorized]`. It fails loudly (non-zero) when the range cannot be resolved rather than passing silently
 - `merge` is allowed only when the story is both `accepted` and `closed`
 
 ## Loop Lifecycle

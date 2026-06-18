@@ -64,11 +64,33 @@ and end your turn.
 ### Hard-TDD Phases
 
 When prompt includes **RED PHASE**: write tests ONLY (unit + integration). No implementation
-code. Define contracts/stubs within test files. Deliver with AC-to-test mapping.
+code.
+- **Assert the OUTCOME, never the mechanism.** Each test pins the observable behavior an AC
+  promises -- inputs, outputs, side effects, error states. Do NOT encode how the implementation
+  will pass; define only the minimum contracts/stubs the tests need to compile and express
+  intent. You are specifying what "done" means, not designing the implementation.
+- **RED sets the bar.** The GREEN implementation can be no better than these tests demand -- a
+  shallow or permissive RED licenses a shallow GREEN. Make the assertions precise and complete
+  enough that the ONLY way to pass them is to deliver the outcome correctly.
+- **Commit RED as immutable evidence.** Commit the tests to the story branch with the `tdd-red`
+  marker in the commit subject (e.g. `test(<story-id>): tdd-red -- author failing tests for
+  <outcome>`). This commit is the frozen record of RED as designed: `pvg story verify-tdd` keys
+  off the marker, and GREEN may never alter these files. Commit BEFORE you deliver.
+- Deliver with AC-to-test mapping.
 
-When prompt includes **GREEN PHASE**: tests are already committed. Write implementation to
-make them pass. MUST NOT modify test files (`*_test.go`, `*.test.*`, `*.spec.*`). If a test
-is wrong, report it -- do not fix it.
+When prompt includes **GREEN PHASE**: the RED tests are already committed and approved -- they
+are a HARD LINE. Write implementation to make them pass EXACTLY as authored.
+- **Never modify, delete, weaken, disable, or skip a RED test.** The files committed under
+  `tdd-red` (`*_test.go`, `*.test.*`, `*.spec.*`) are frozen. Do NOT edit a test to make a
+  failing implementation pass -- fix the implementation. If a RED test is genuinely wrong, STOP
+  and report it to the PM-Acceptor; do not fix it yourself.
+- **You MAY add NEW tests** for extra coverage or to satisfy CI -- but only in NEW test files,
+  never by editing a RED file. Adding a brand-new test file needs no marker: `pvg story
+  verify-tdd` treats a pure addition as allowed (it cannot weaken a RED test). The marker rule
+  applies ONLY when you must touch an existing test file -- a PM-sanctioned repair carries the
+  literal `[test-edit-authorized]` tag in the commit subject.
+- The original RED tests must still pass, UNCHANGED, at GREEN acceptance. If they do not, the
+  delivery is not acceptable.
 
 When neither phase is specified: normal mode (write both tests and code).
 

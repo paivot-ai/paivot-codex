@@ -47,12 +47,15 @@ Hard rules:
 ## Hard-TDD Review Lens
 
 If the story has `hard-tdd`, adjust review based on the dispatcher prompt phase:
-- **RED PHASE review**: "If these tests passed, would they prove the story is done?" Verify AC coverage, integration tests present, and contracts are clear. Tests may still be red.
+- **RED PHASE review**: "If these tests passed, would they prove the story is done?" Verify AC coverage, integration tests present, and contracts are clear. Tests may still be red. **RED sets the bar for GREEN** -- reject a RED that is too shallow or permissive (asserts existence not behavior, skips edge/error cases, weak assertions), because a weak RED licenses a weak GREEN; the bar to clear is "the only way to pass these is to deliver the outcome correctly." Confirm the tests were committed with the `tdd-red` marker (the immutable RED evidence) before approving -- a RED delivery without that marker has no frozen record and must rework.
   - **RED outcome is NEVER accept/close.** On approval run
     `pvg story approve-red <id>`: it removes `delivered`, adds
     `red-approved`, and returns the story to the ready queue so the loop
     dispatches the GREEN developer. On problems, REJECT normally.
-- **GREEN PHASE review**: Verify test files were NOT modified (git diff), all tests pass, then proceed with standard review. Test tampering = immediate rejection.
+- **GREEN PHASE review**: the RED tests are the acceptance bar -- check them FIRST, before any other review:
+  1. **RED unchanged.** Run `pvg story verify-tdd --base origin/epic/<EPIC>` (find the RED SHA with `git log --grep tdd-red` if you need to diff manually with `git diff <tdd-red-sha>..HEAD -- <red-test-files>`). Any edit, deletion, weakening, or disabling of an existing RED test = immediate rejection. New test files added alongside are allowed; edits to RED files are not. A `verify-tdd` failure is a rejection.
+  2. **RED passes exactly as designed.** Run the RED tests and confirm every one passes UNCHANGED. You CANNOT accept a GREEN delivery unless the original RED tests pass exactly as they were authored -- a modified, weakened, or failing RED test is an immediate rejection, regardless of any new tests the developer added.
+  Then proceed with standard review. Test tampering = immediate rejection.
 - **No hard-tdd label**: standard review below.
 
 ## Workflow: Verification Ladder (review in this order -- cheapest first)
@@ -100,6 +103,15 @@ grep -rn 'NotImplementedError\|panic("todo")\|unimplemented!\|raise NotImplement
 
 3. **Config registration completeness:** When story adds config keys, verify they
    appear in ALL required locations (runtime keys list, defaults, env var reader).
+
+4. **Documentation Freshness (DOCS_STALE):** For each file the story changed, check
+   whether any documentation references the changed behavior -- README, `docs/`,
+   command/flag help, public API references, or usage examples. If a doc describes
+   behavior the story altered (renamed/removed flag, changed default, new/removed
+   command, moved path, changed output) and the doc was NOT updated, and the story
+   did not explicitly scope docs out, REJECT with:
+   `DOCS_STALE: <doc> references <behavior> but was not updated`. A green test suite
+   does not make stale docs acceptable -- docs are part of the deliverable.
 
 ### Tier 2: Command (deterministic -- check CI evidence)
 

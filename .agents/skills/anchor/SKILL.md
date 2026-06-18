@@ -268,9 +268,14 @@ Verify ALL new modules meet quality gates:
 ## Hard-TDD Validation (Milestone Review)
 
 For stories with `hard-tdd` label, verify:
-- Two distinct commits: test commit (RED) before implementation commit (GREEN)
-- Test files NOT modified in the implementation commit
-- If pattern is missing, the hard-tdd workflow was bypassed -- GAPS_FOUND
+- The RED commit carries the `tdd-red` marker and precedes the GREEN
+  implementation commit(s)
+- RED test files were NOT modified after the `tdd-red` commit (new test files
+  added during GREEN are allowed; edits to RED files are not) -- run
+  `pvg story verify-tdd --base origin/main` (or `--base "$EPIC_BRANCH"`); any
+  unauthorized test edit = GAPS_FOUND
+- The RED tests still pass exactly as authored on the merged branch
+- If the pattern is missing, the hard-tdd workflow was bypassed -- GAPS_FOUND
 
 ## Hard Rules
 

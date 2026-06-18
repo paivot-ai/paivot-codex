@@ -288,7 +288,9 @@ Validate that the completed epic delivered real value:
 - Inspect tests for mocks in integration/e2e tests (forbidden)
 - Verify skills were consulted where stories required them
 - Check that boundary maps are satisfied (PRODUCES/CONSUMES)
-- Validate hard-TDD two-commit pattern where applicable
+- Validate hard-TDD where applicable: the `tdd-red` commit precedes GREEN, RED
+  test files were not modified after it (new files OK), and the RED tests still
+  pass exactly as authored (`pvg story verify-tdd`)
 
 Epic branch: epic/EPIC_ID
 ```
@@ -1155,7 +1157,9 @@ so rework actions carry the correct phase automatically.
 ```python
 test_author = spawn_agent(prompt=f"""Use skill developer. story_id={story_id}.
 RED PHASE: Write tests ONLY. Do not implement production code.
-Tests must prove the AC when they pass. Commit test files only.""")
+Assert the OUTCOME each AC promises, never the mechanism -- RED sets the bar GREEN
+must clear. Tests must prove the AC when they pass. Commit the test files with the
+`tdd-red` marker in the commit subject BEFORE delivering (immutable RED evidence).""")
 wait(test_author)
 close_agent(test_author)
 
@@ -1173,16 +1177,20 @@ close_agent(pm_id)
 
 ```python
 implementer = spawn_agent(prompt=f"""Use skill developer. story_id={story_id}.
-GREEN PHASE: Make the existing tests pass. Do NOT modify test files.
+GREEN PHASE: Make the existing RED tests pass EXACTLY as authored. Never modify,
+delete, weaken, or skip a RED test -- fix the implementation; if a RED test is
+genuinely wrong, STOP and report it. You MAY add NEW tests, but only in NEW files.
 Test commit: {test_commit}""")
 wait(implementer)
 close_agent(implementer)
 
-# Verify test files untouched
-tampered = shell(f"git diff {test_commit} --name-only -- '*_test.go' '*.test.*' '*.spec.*'")
-if tampered:
-    # Reject, restore tests, re-spawn implementer
-    shell(f"git checkout {test_commit} -- {tampered}")
+# Verify the RED set was not weakened. verify-tdd allows brand-new test files and
+# only flags MODIFY/DELETE of an existing (RED) test file -- never reconstruct this
+# check by hand with a name-only diff, which would falsely flag legitimate additions.
+verdict = shell('pvg story verify-tdd --base "$EPIC_BRANCH"')
+if verdict.failed:
+    # Reject and re-spawn the implementer (do NOT restore tests for the dev).
+    ...
 ```
 
 ## Decision Rules (What To Run Next)
