@@ -206,6 +206,7 @@ See `docs/GIT_WORKFLOW.md` for detailed procedures and the shared-vault model.
 | `vlt` | Vault CLI (with references: command ref, agentic patterns, advanced techniques, architecture) |
 | `vault_knowledge` | Three-tier knowledge capture protocol |
 | `c4` | C4 architecture model (Structurizr DSL, contracts, diagrams) |
+| `domain_model` | Domain model as code (*.modelith.yaml, invariants, modelith lint/render) |
 
 ### Vault Management
 

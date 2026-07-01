@@ -103,6 +103,7 @@ Light stacks (Python, TS/JS): max 4 dev + 2 PM + 6 total.
 - `vlt`: vault CLI operations (with references: command reference, agentic patterns, advanced techniques, vault architecture)
 - `vault_knowledge`: three-tier knowledge capture protocol
 - `c4`: C4 architecture model (Structurizr DSL, architecture contracts, diagram export)
+- `domain_model`: domain model as code (*.modelith.yaml entities/invariants, invariants as acceptance criteria, modelith lint/render)
 
 ### Vault Management
 - `vault_capture`: deliberate knowledge capture pass (decisions, patterns, debug insights)

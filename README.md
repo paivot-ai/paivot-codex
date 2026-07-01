@@ -222,6 +222,7 @@ Configure with: `pvg settings workflow.solo_dev=false` for team workflows.
 | `vault_triage` | Review system-scope vault proposals |
 | `vault_settings` | Project-level settings and toggles |
 | `c4` | Optional architecture-as-code support |
+| `domain_model` | Optional domain-model-as-code support |
 | `intake` | Turn user feedback into backlog work |
 
 ## Shared Live Backlog Model

@@ -39,6 +39,7 @@ workflow.custom_statuses: delivered,review,rejected
 architecture.c4: false           # C4 model alongside ARCHITECTURE.md
 dnf.specialist_review: false     # challenger review after each BLT document
 dnf.max_iterations: 3            # max creator-challenger loops before escalation
+dnf.domain_model: false          # *.modelith.yaml domain model alongside ARCHITECTURE.md
 bug_fast_track: false            # allow non-sr_pm agents to create bugs directly
 loop.persist_across_sessions: true  # loop state survives session boundaries (default true)
 lint.quality_gates:              # pipe-separated extra patterns the walking-skeleton
